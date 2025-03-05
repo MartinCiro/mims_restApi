@@ -2,7 +2,7 @@ import { connect, NatsConnection, JSONCodec, Subscription } from 'nats';
 
 class NatsService {
   private nc: NatsConnection | null = null;
-  private readonly servers: string = 'nats://localhost:4222';
+  private readonly servers: string = 'nats://nats_server:4222';
   private readonly codec = JSONCodec();
 
   async connect(): Promise<NatsConnection> {

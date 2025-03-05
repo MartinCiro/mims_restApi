@@ -7,4 +7,4 @@ JWT_SECRETO = VGhpcyBpcyBhIHZlcnkgc2VjdXJlIHN0cmluZw==
 # Parámetro de semilla del JWT
 JWT_SALT = 8
 
-DATABASE_URL=postgresql://postgres:ciro@psql2:5432/bd_mims
+DATABASE_URL=postgresql://postgres:ciro@psql:5432/bd_mims
