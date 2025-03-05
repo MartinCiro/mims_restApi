@@ -12,7 +12,7 @@ services:
     volumes:
       - pg_data:/var/lib/postgresql/data  
       - ./src/bd_backup/backup.dump:/docker-entrypoint-initdb.d/backup.dump
-    entrypoint: ["/bin/bash", "-c", "docker-entrypoint.sh postgres & sleep 10 && pg_restore -U postgres -d bd_mims --no-owner --no-privileges /docker-entrypoint-initdb.d/backup.dump"]
+    entrypoint: ["/bin/bash", "-c", "docker-entrypoint.sh postgres & sleep 10 && pg_restore -U postgres -d bd_mims --no-owner --no-privileges /docker-entrypoint-initdb.d/backup.dump && psql -U postgres -d bd_mims -f /docker-entrypoint-initdb.d/ajustar_secuencias.sql"]
     networks:
       - app_network
 

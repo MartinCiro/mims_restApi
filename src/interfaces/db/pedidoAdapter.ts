@@ -41,7 +41,6 @@ export default class PedidosAdapter implements PedidosPort {
           data: "No se encontró el usuario"
         };
       }
-
       const nuevoPedido = await prisma.pedido.create({
         data: {
           descripcion: pedidoData.descripcion,
@@ -54,6 +53,7 @@ export default class PedidosAdapter implements PedidosPort {
 
       return nuevoPedido;
     } catch (error: any) {
+      console.log(error);
       const validacion = validarExistente(error.code, pedidoData.email);
       if (!validacion.ok) {
         throw {

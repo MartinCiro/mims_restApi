@@ -14,7 +14,12 @@ Para desplegar el contenedor, ejecuta (renombrar example a .env sino lo tiene):
 ```bash
 docker-compose up -d
 ```
+## **- Detener el Contenedor**  
+Para detener y eliminar los volumenes definidos:
 
+```bash
+docker-compose down -v
+```
 ---
 
 ## 🧪 **2. Ejecutar Pruebas**
@@ -77,6 +82,13 @@ docker exec -i psql pg_restore -U postgres -d bd_mims < backup.dump
 
 ---
 
+Si tienes dudas, revisa los logs de Docker con:  
+
+```bash
+docker logs -f nestjs_app
+```
+---
+
 # 📂 **Estructura del Proyecto**
 Este proyecto sigue una organización modular basada en **arquitectura hexagonal**, lo que mejora la mantenibilidad y escalabilidad.
 
@@ -117,10 +129,4 @@ Esta estructura modular **facilita la escalabilidad y el mantenimiento** del có
 ---
 
 🔹 **Con estos pasos, tu entorno estará listo para funcionar sin problemas.**  
-Si tienes dudas, revisa los logs de Docker con:  
-
-```bash
-docker logs -f psql
-```
-
 ---  
