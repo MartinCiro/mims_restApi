@@ -103,11 +103,11 @@ export default class UsuariosAdapter implements UsuariosPort {
         select: { id: true }
       }),
       tx.permiso.upsert({
-        where: { nombre: 'anuncios:Lee' },
+        where: { nombre: 'layouts:Lee' },
         update: {},
         create: {
-          nombre: 'anuncios:Lee',
-          descripcion: 'Permiso de solo lectura en anuncios'
+          nombre: 'layouts:Lee',
+          descripcion: 'Permiso de solo lectura en layouts'
         },
         select: { id: true }
       })
