@@ -48,6 +48,7 @@ class AuthAdapter implements AuthPort {
       };
 
     } catch (error: any) {
+      console.error("Error en auth del usuario:", error);
       const validacion = validarExistente(error.code, authData.username);
       if (!validacion.ok) {
         throw {
@@ -57,13 +58,12 @@ class AuthAdapter implements AuthPort {
         };
       }
       throw {
-        ok: false,
-        status_cod: 400,
-        data: "Ocurrió un error consultando el auth",
+        ok: error.ok || false,
+        status_cod: error.status_cod || 400,
+        data: error.message || "Ocurrió un error consultando el usuario"
       };
     }
   }
-
 }
 
 export default AuthAdapter;

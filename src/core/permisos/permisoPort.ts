@@ -1,8 +1,9 @@
+import { PermisoData, PermisoDataUpdate, PermisoDataXid } from 'api/permisos/models/permiso.model';
 export default interface PermisosPort {
-    crearPermisos(permisoData: { nombre: string; descripcion?: string; }): Promise<any>;
+    crearPermisos(permisoData: PermisoData): Promise<any>;
     obtenerPermisos(): Promise<any>;
-    obtenerPermisosXid(permisoData: { id: string | number; }): Promise<any>;
-    delPermiso(permisoData: { id: string | number; }): Promise<any>;
-    actualizaPermiso(permisoData: { nombre?: string; descripcion?: string; id: number | string; }): Promise<any>;
+    obtenerPermisosXid(permisoData: PermisoDataXid): Promise<any>;
+    delPermiso(permisoData: PermisoDataXid): Promise<any>;
+    actualizaPermiso(permisoData: PermisoDataUpdate): Promise<any>;
 }
 

@@ -1,19 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import RolesPort from './rolPort';
-
-interface RolData {
-  nombre: string;
-  descripcion?: string;
-  permisos: (string | number)[];
-}
-
-  
-interface RolDataXid {
-  id: number | string;
-}
-
-type RolDataUpdate = Partial<Omit<RolData, 'id'>> & RolDataXid;
-
+import { RolData, RolDataUpdate, RolDataXid } from 'api/roles/models/rol.model';
 
 @Injectable() 
 export class RolService {

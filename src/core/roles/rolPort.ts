@@ -1,8 +1,9 @@
+import { RolData, RolDataUpdate, RolDataXid } from 'api/roles/models/rol.model';
 export default interface RolesPort {
-    crearRoles(rolData: { nombre: string; descripcion?: string; permisos: (string | number)[];}): Promise<any>;
+    crearRoles(rolData: RolData): Promise<any>;
     obtenerRoles(): Promise<any>;
-    obtenerRolesXid(rolData: { id: string | number; }): Promise<any>;
-    delRol(rolData: { id: string | number; }): Promise<any>;
-    actualizaRol(rolData: { nombre?: string; descripcion?: string; id: number | string; }): Promise<any>;
+    obtenerRolesXid(rolData: RolDataXid): Promise<any>;
+    delRol(rolData: RolDataXid): Promise<any>;
+    actualizaRol(rolData: RolDataUpdate): Promise<any>;
 }
 

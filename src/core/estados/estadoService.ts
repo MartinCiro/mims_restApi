@@ -1,18 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import EstadosPort from './estadoPort';
-
-interface EstadoData {
-  nombre: string;
-  descripcion?: string;
-}
-
-  
-interface EstadoDataXid {
-  id: number | string;
-}
-
-type EstadoDataUpdate = Partial<Omit<EstadoData, 'id'>> & EstadoDataXid;
-
+import { EstadoData, EstadoDataUpdate, EstadoDataXid } from 'api/estados/models/estado.model';
 
 @Injectable() 
 export class EstadoService {

@@ -1,18 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import PermisosPort from './permisoPort';
 
-interface PermisoData {
-  nombre: string;
-  descripcion?: string;
-}
-
-  
-interface PermisoDataXid {
-  id: number | string;
-}
-
-type PermisoDataUpdate = Partial<Omit<PermisoData, 'id'>> & PermisoDataXid;
-
+import { PermisoData, PermisoDataUpdate, PermisoDataXid } from 'api/permisos/models/permiso.model';
 
 @Injectable() 
 export class PermisoService {

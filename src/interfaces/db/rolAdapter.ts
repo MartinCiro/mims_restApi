@@ -3,14 +3,15 @@ import { PrismaClient } from '@prisma/client';
 import { validarExistente, validarNoExistente } from 'api/utils/validaciones';
 import { Injectable } from '@nestjs/common';
 import { ForbiddenException } from '@nestjs/common';
-import { ResponseBody } from '../api/models/ResponseBody';
+import { ResponseBody } from 'api/models/ResponseBody';
+import { RolData, RolDataUpdate, RolDataXid } from 'api/roles/models/rol.model';
 
 const prisma = new PrismaClient();
 
 @Injectable()
 export default class RolesAdapter implements RolesPort {
 
-  async crearRoles(rolData: { nombre: string; descripcion?: string; permisos: (string | number)[] }) {
+  async crearRoles(rolData: RolData) {
     try {
       // Buscar los permisos en la BD que coincidan con los proporcionados
       const permisosEncontrados = await prisma.permiso.findMany({
@@ -114,7 +115,7 @@ export default class RolesAdapter implements RolesPort {
     }
   }
 
-  async obtenerRolesXid(rolData: { id: string | number }) {
+  async obtenerRolesXid(rolData: RolDataXid) {
     try {
       const rol = await prisma.rol.findUnique({
         where: { id: Number(rolData.id) },
@@ -151,7 +152,7 @@ export default class RolesAdapter implements RolesPort {
   }
 
 
-  async delRol(rolData: { id: string }) {
+  async delRol(rolData: RolDataXid) {
     try {
       const rol = await prisma.rol.delete({
         where: { id: Number(rolData.id) },
@@ -172,13 +173,7 @@ export default class RolesAdapter implements RolesPort {
     }
   }
 
-
-  async actualizaRol(rolData: {
-    nombre?: string;
-    descripcion?: string;
-    permisos?: (string | number)[];
-    id: number | string;
-  }) {
+  async actualizaRol(rolData: RolDataUpdate) {
     try {
       const { id, permisos, ...updates } = rolData;
 
@@ -241,7 +236,5 @@ export default class RolesAdapter implements RolesPort {
       };
     }
   }
-
-
 }
 

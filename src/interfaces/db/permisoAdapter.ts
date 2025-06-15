@@ -3,47 +3,42 @@ import { PrismaClient } from '@prisma/client';
 import { validarExistente, validarNoExistente } from 'api/utils/validaciones';
 import { Injectable } from '@nestjs/common';
 import { ForbiddenException } from '@nestjs/common';
+import { PermisoData, PermisoDataUpdate, PermisoDataXid } from 'api/permisos/models/permiso.model';
 
 const prisma = new PrismaClient();
 
 @Injectable()
 export default class PermisosAdapter implements PermisosPort {
 
-  async crearPermisos(permisoData: { nombre: string; descripcion?: string; }) {
+  async crearPermisos(permisoData: PermisoData) {
+    const { permisos, descripcion } = permisoData;
+
     try {
-      const nuevoPermiso = await prisma.permiso.create({
-        data: {
-          nombre: permisoData.nombre,
-          descripcion: permisoData.descripcion
-        }
-      });
+      const permisosCreados = [];
 
-      return nuevoPermiso;
+      for (const nombre of permisos) {
+        const permiso = await prisma.permiso.upsert({
+          where: { nombre },
+          update: {},
+          create: {
+            nombre,
+            descripcion,
+          },
+        });
+
+        permisosCreados.push(permiso);
+      }
+
+      return {
+        ok: true,
+        message: "Permisos creados correctamente",
+        permisos: permisosCreados,
+      };
     } catch (error: any) {
-      const validacion = validarExistente(error.code, permisoData.nombre);
-      if (!validacion.ok) {
-        throw {
-          ok: false,
-          status_cod: 409,
-          data: validacion.data
-        };
-      }
-
-      const resultado = error.meta?.target?.[0] || "valor";
-      const valNoExistente = validarNoExistente(error.code, `El ${resultado} asignado`);
-
-      if (!valNoExistente.ok) {
-        throw {
-          ok: false,
-          status_cod: 409,
-          data: valNoExistente.data
-        };
-      }
-
       throw {
-        ok: false,
-        status_cod: 400,
-        data: error.data || "Ocurrió un error consultando el permiso"
+        ok: error.ok || false,
+        status_cod: error.status_cod || 400,
+        data: error.data || "Error inesperado creando permisos",
       };
     }
   }
@@ -74,7 +69,7 @@ export default class PermisosAdapter implements PermisosPort {
     }
   }
 
-  async obtenerPermisosXid(permisoData: { id: string | number; }) {
+  async obtenerPermisosXid(permisoData: PermisoDataXid) {
     try {
       const permiso = await prisma.permiso.findUnique({
         where: { id: Number(permisoData.id) },
@@ -101,7 +96,7 @@ export default class PermisosAdapter implements PermisosPort {
     }
   }
 
-  async delPermiso(permisoData: { id: string }) {
+  async delPermiso(permisoData: PermisoDataXid) {
     try {
       const permiso = await prisma.permiso.delete({
         where: { id: Number(permisoData.id) },
@@ -122,18 +117,17 @@ export default class PermisosAdapter implements PermisosPort {
     }
   }
 
-
-  async actualizaPermiso(permisoData: {  nombre?: string; descripcion?: string; id: number | string; }) {
+  async actualizaPermiso(permisoData: PermisoDataUpdate) {
     try {
       const { id, ...updates } = permisoData;
-  
+
       const permisoActualizado = await prisma.permiso.update({
-        where: { id: Number(id) }, 
+        where: { id: Number(id) },
         data: {
           ...updates,
         },
       });
-  
+
       return {
         ok: true,
         message: "Permiso actualizado correctamente",
@@ -148,6 +142,5 @@ export default class PermisosAdapter implements PermisosPort {
       };
     }
   }
-  
 }
 

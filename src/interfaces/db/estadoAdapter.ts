@@ -5,14 +5,15 @@ import { Injectable } from '@nestjs/common';
 import { ForbiddenException } from '@nestjs/common';
 import { natsService } from 'src/lib/nats';
 import { RedisService } from 'shared/cache/redis.service';
+import { EstadoData, EstadoDataUpdate, EstadoDataXid } from 'api/estados/models/estado.model';
 
 const prisma = new PrismaClient();
 
 @Injectable()
 export default class EstadosAdapter implements EstadosPort {
-  constructor(private readonly redisService: RedisService) {}
+  constructor(private readonly redisService: RedisService) { }
 
-  async crearEstados(estadoData: { nombre: string; descripcion?: string; }) {
+  async crearEstados(estadoData: EstadoData) {
     try {
 
       const nuevoEstado = await prisma.estado.create({
@@ -75,8 +76,14 @@ export default class EstadosAdapter implements EstadosPort {
         }
       });
 
-      if (!estados.length) throw new ForbiddenException("No se ha encontrado ningun estado");
-      
+      if (estados.length === 0) {
+        throw {
+          ok: true,
+          status_cod: 200,
+          data: "No se han encontrado ningun estado"
+        };
+      }
+
       let estados_list = estados.map((estado: { id: any; nombre: any; descripcion: any; }) => ({
         id: estado.id,
         nombre: estado.nombre,
@@ -87,14 +94,14 @@ export default class EstadosAdapter implements EstadosPort {
 
     } catch (error: any) {
       throw {
-        ok: false,
-        status_cod: 400,
-        data: error.message || "Ocurrió un error consultando el estado"
+        ok: error.ok || false,
+        status_cod: error.status_cod || 400,
+        data: error.message || error.data || "Ocurrió un error consultando el estado"
       };
     }
   }
 
-  async obtenerEstadosXid(estadoData: { id: string | number }) {
+  async obtenerEstadosXid(estadoData: EstadoDataXid) {
     try {
       const cacheKey = `estado:${estadoData.id}`;
       const estadoCache = await this.redisService.get(cacheKey);
@@ -109,7 +116,13 @@ export default class EstadosAdapter implements EstadosPort {
           descripcion: true,
         }
       });
-      if (!estado) throw new ForbiddenException("El estado solicitado no existe en la base de datos");
+      if (!estado) {
+        throw {
+          ok: true,
+          status_cod: 200,
+          data: "No se ha encontrado el estado solicitado"
+        };
+      }
       const estado_id = {
         id: estado.id,
         nombre: estado.nombre,
@@ -118,7 +131,7 @@ export default class EstadosAdapter implements EstadosPort {
 
       await this.redisService.set(cacheKey, JSON.stringify(estado_id));
       return estado_id;
-      
+
     } catch (error: any) {
       throw {
         ok: false,
@@ -128,7 +141,7 @@ export default class EstadosAdapter implements EstadosPort {
     }
   }
 
-  async delEstado(estadoData: { id: string }) {
+  async delEstado(estadoData: EstadoDataXid) {
     try {
       const estadosCache = await this.redisService.get('estados:lista');
 
@@ -155,13 +168,15 @@ export default class EstadosAdapter implements EstadosPort {
       };
     }
   }
-  async actualizaEstado(estadoData: {
-    nombre?: string;
-    descripcion?: string;
-    id: number | string;
-  }) {
+
+  async actualizaEstado(estadoData: EstadoDataUpdate) {
     try {
       const estadosCache = await this.redisService.get('estados:lista');
+      const { id, ...updates } = estadoData;
+      const estadoActualizado = await prisma.estado.update({
+        where: { id: Number(id) },
+        data: updates
+      });
 
       if (estadosCache) {
         let estados = JSON.parse(estadosCache);
@@ -169,7 +184,6 @@ export default class EstadosAdapter implements EstadosPort {
         await this.redisService.set('estados:lista', JSON.stringify(estados), 3600);
       }
 
-      const { id, ...updates } = estadoData;
 
       // Verificar si el estado existe
       const estadoExistente = await prisma.estado.findUnique({
@@ -184,20 +198,20 @@ export default class EstadosAdapter implements EstadosPort {
         }
       }
 
-
-      // Actualizar el estado con los nuevos datos
-      const estadoActualizado = await prisma.estado.update({
-        where: { id: Number(id) },
-        data: updates
-      });
-
       return {
         ok: true,
         message: "Estado actualizado correctamente",
         estado: estadoActualizado
       };
     } catch (error: any) {
-      validarExistente(error.code, "El estado solicitado");
+      const validacion = validarExistente(error.code, error.meta?.target);
+      if (!validacion.ok) {
+        throw {
+          ok: validacion.ok,
+          status_cod: 409,
+          data: validacion.data,
+        };
+      }
       throw {
         ok: false,
         status_cod: 400,
@@ -205,7 +219,4 @@ export default class EstadosAdapter implements EstadosPort {
       };
     }
   }
-
-
 }
-
