@@ -1,4 +1,4 @@
-import { EstadoData, EstadoDataUpdate, EstadoDataXid } from 'api/estados/models/estado.model';
+import { EstadoData, EstadoDataUpdate, EstadoDataXid } from '@api/estados/models/estado.model';
 export default interface EstadosPort {
     crearEstados(usuarioData: EstadoData): Promise<any>;
     obtenerEstados(): Promise<any>;

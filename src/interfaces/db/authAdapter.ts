@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
-import AuthPort from 'core/auth/authPort';
-import { validarExistente } from 'api/utils/validaciones';
+import AuthPort from '@core/auth/authPort';
+import { validarExistente } from '@api/utils/validaciones';
 
 const prisma = new PrismaClient();
 

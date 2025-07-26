@@ -3,5 +3,5 @@ import { IsOptional, IsString } from 'class-validator';
 export class ObtenerUsuariosDto {
   @IsOptional()
   @IsString()
-  id?: string;
+  numero_documento?: string;
 }

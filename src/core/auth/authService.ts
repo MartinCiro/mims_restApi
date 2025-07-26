@@ -1,9 +1,8 @@
 import { Usuario } from './entities/Usuario';
 import { generateJWT } from './service/jwtService';
-import { natsService } from 'src/lib/nats';
 import { Injectable, Inject } from '@nestjs/common';
-import { ResponseBody } from 'api/models/ResponseBody';
-import { RedisService } from 'shared/cache/redis.service';
+import { ResponseBody } from '@api/models/ResponseBody';
+import { RedisService } from '@shared/cache/redis.service';
 import AuthPort from './authPort';
 
 @Injectable()
@@ -57,17 +56,8 @@ export default class AuthService {
             // Verificar si el evento ya se publicó en Redis
             const eventExists = await this.redisService.get(eventKey);
 
-            if (!eventExists) {
-                await natsService.publish('usuario.logeado', {
-                    ...userData,
-                    rol: usuarioRetrieved.rol,
-                    timestamp: new Date().toISOString()
-                });
-
-                // Marcar el evento como enviado en Redis
-                await this.redisService.set(JSON.stringify(eventKey), 'true');
-            }
-
+            if (!eventExists) await this.redisService.set(JSON.stringify(eventKey), 'true');
+            
             return {
                 ok: true,
                 statusCode: 200,

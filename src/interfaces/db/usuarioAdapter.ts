@@ -1,76 +1,125 @@
-import UsuariosPort from 'core/usuarios/usuarioPort';
-import { Usuario } from 'core/auth/entities/Usuario';
+import UsuariosPort from '@core/usuarios/usuarioPort';
+import { Usuario } from '@core/auth/entities/Usuario';
 import { Prisma, PrismaClient } from '@prisma/client';
-import { validarExistente, validarNoExistente } from 'api/utils/validaciones';
-import { Injectable } from '@nestjs/common';
+import { validarExistente, validarNoExistente } from '@utils/validaciones';
+import { Injectable, ForbiddenException } from '@nestjs/common';
+import { UsuarioData, UsuarioDataUpdate, UsuarioDataXid } from '@api/usuarios/models/usuario.model';
+
 const prisma = new PrismaClient();
 
 @Injectable()
 export default class UsuariosAdapter implements UsuariosPort {
 
-  async crearUsuarios(usuarioData: {
-    username: string;
-    nombres: string;
-    apellidos: string;
-    pass: string;
-    id_rol?: number | string;
-  }) {
+  async crearUsuarios(usuarioData: UsuarioData) {
     try {
-      const result = await prisma.$transaction(async (tx: PrismaClient) => {
-        // 1. Estado activo y rol en paralelo
-        const [estado, rolData] = await Promise.all([
-          tx.estado.upsert({
-            where: { nombre: 'activo' },
-            update: {},
-            create: { nombre: 'activo' },
-            select: { id: true }
-          }),
-          (async () => {
-            if (usuarioData.id_rol) {
-              const rol = await tx.rol.findUnique({
-                where: { id: Number(usuarioData.id_rol) },
-                select: { id: true }
-              });
-              if (!rol) throw new Error('ROL_NO_EXISTE');
-              return { rol, permisos: [] };
-            } else {
-              return this.asignarRolInvitado(tx);
-            }
-          })()
-        ]);
+      const fechaNacimiento = new Date(usuarioData.fecha_nacimiento);
+      const fechaRegistro = new Date();
 
-        // 2. Crear usuario
-        const user = new Usuario(usuarioData.username, usuarioData.pass);
-        return await tx.usuario.create({
-          data: {
-            username: usuarioData.username,
-            nombres: usuarioData.nombres,
-            apellidos: usuarioData.apellidos,
-            pass: user.getEncryptedPassword(),
-            id_estado: estado.id,
-            id_rol: rolData.rol.id
+      // Obtener o crear la fecha de nacimiento
+      const fechaNacimientoId = await prisma.fecha.upsert({
+        where: { fecha: fechaNacimiento },
+        update: {},
+        create: { fecha: fechaNacimiento },
+        select: { id: true }
+      });
+
+      // Obtener o crear la fecha de registro
+      const fechaRegistroId = await prisma.fecha.upsert({
+        where: { fecha: fechaRegistro },
+        update: {},
+        create: { fecha: fechaRegistro },
+        select: { id: true }
+      });
+
+      // Obtener o crear estado "Activo"
+      const estado = await prisma.estado.upsert({
+        where: { nombre: 'Activo' },
+        update: {},
+        create: { nombre: 'Activo' },
+        select: { id: true }
+      });
+
+      // Determinar o crear el rol
+      let idRol: number;
+      if (usuarioData.id_rol) {
+        const rol = await prisma.rol.findUnique({
+          where: { id: Number(usuarioData.id_rol) },
+          select: { id: true }
+        });
+
+        if (!rol) throw new ForbiddenException(`El rol con ID ${usuarioData.id_rol} no existe`);
+        idRol = rol.id;
+      } else {
+        // Rol invitado
+        const rolInvitado = await prisma.rol.upsert({
+          where: { nombre: 'Invitado' },
+          update: {},
+          create: { nombre: 'Invitado' },
+          select: { id: true }
+        });
+
+        const permisoLee = await prisma.permiso.upsert({
+          where: { nombre: 'anuncios:Lee' },
+          update: {},
+          create: {
+            nombre: 'anuncios:Lee',
+            descripcion: 'Permiso de solo lectura en anuncios'
           },
           select: { id: true }
         });
-      });
 
-      return result;
-    } catch (error: any) {
-      // Manejo de errores
-      if (error.message === 'ROL_NO_EXISTE') {
-        throw {
-          ok: false,
-          status_cod: 400,
-          data: "El rol especificado no existe"
-        };
+        // Verificar si la relación ya existe
+        const existeRelacion = await prisma.rolXPermiso.findUnique({
+          where: {
+            id_rol_id_permiso: {
+              id_rol: rolInvitado.id,
+              id_permiso: permisoLee.id
+            }
+          }
+        });
+
+        if (!existeRelacion) {
+          await prisma.rolXPermiso.create({
+            data: {
+              id_rol: rolInvitado.id,
+              id_permiso: permisoLee.id
+            }
+          });
+        }
+
+        idRol = rolInvitado.id;
       }
 
-      const validacion = validarExistente(error.code, usuarioData.username);
+      // Encriptar la contraseña
+      const user = new Usuario(usuarioData.numero_documento, usuarioData.passwd);
+
+      // Crear el usuario
+      const nuevoUsuario = await prisma.usuario.create({
+        data: {
+          documento: usuarioData.numero_documento,
+          nombres: usuarioData.nombres,
+          apellido: usuarioData.apellido,
+          email: usuarioData.email,
+          info_perfil: usuarioData.info_perfil,
+          num_contacto: usuarioData.numero_contacto,
+          nom_user: usuarioData.nom_user,
+          id_fecha_nacimiento: fechaNacimientoId.id,
+          id_fecha_registro: fechaRegistroId.id,
+          pass: user.getEncryptedPassword(),
+          estado_id: estado.id,
+          id_rol: idRol
+        },
+        select: { documento: true }
+      });
+
+      return nuevoUsuario;
+    } catch (error: any) {
+      const validacion = validarExistente(error.code, error.meta?.target);
       if (!validacion.ok) {
         throw {
-          ok: false,
+          ok: validacion.ok,
           status_cod: 409,
-          data: validacion.data
+          data: validacion.data,
         };
       }
 
@@ -86,6 +135,84 @@ export default class UsuariosAdapter implements UsuariosPort {
       }
 
       throw {
+        ok: false,
+        status_cod: 400,
+        data: error.data || "Ocurrió un error creando el usuario"
+      };
+    }
+  }
+
+  async obtenerUsuarios() {
+    try {
+      const usuarios = await prisma.usuario.findMany({
+        select: {
+          nombres: true,
+          apellido: true,
+          documento: true,
+          email: true,
+          info_perfil: true,
+          num_contacto: true,
+          nom_user: true,
+          fecha_nacimiento: {
+            select: { fecha: true }
+          },
+          fecha_registro: {
+            select: { fecha: true }
+          },
+          rol: {
+            select: {
+              nombre: true,
+              rolXPermiso: {
+                select: {
+                  permiso: {
+                    select: {
+                      nombre: true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          estado: {
+            select: { nombre: true }
+          }
+        }
+      });
+
+      if (usuarios.length === 0) {
+        throw {
+          ok: true,
+          status_cod: 200,
+          data: "No se han encontrado usuarios"
+        };
+      }
+
+      return usuarios.map((usuario) => {
+        const permisosPlano = usuario.rol.rolXPermiso.map((permiso) => permiso.permiso.nombre);
+        const permisosAgrupados = permisosPlano.reduce((grupos: Record<string, string[]>, permiso: string) => {
+          const [categoria] = permiso.split(':');
+          if (!grupos[categoria]) grupos[categoria] = [];
+          grupos[categoria].push(permiso.split(':')[1]);
+          return grupos;
+        }, {});
+
+        return {
+          nombres: usuario.nombres,
+          apellido: usuario.apellido,
+          estado: usuario.estado.nombre,
+          rol: usuario.rol.nombre,
+          documento: usuario.documento,
+          email: usuario.email,
+          info_perfil: usuario.info_perfil,
+          num_contacto: usuario.num_contacto,
+          nom_user: usuario.nom_user,
+          fecha_nacimiento: usuario.fecha_nacimiento?.fecha,
+          fecha_registro: usuario.fecha_registro?.fecha,
+          permisos: permisosAgrupados
+        };
+      });
+    } catch (error: any) {
+      throw {
         ok: error.ok || false,
         status_cod: error.status_cod || 400,
         data: error.message || error.data || "Ocurrió un error consultando el usuario"
@@ -93,93 +220,12 @@ export default class UsuariosAdapter implements UsuariosPort {
     }
   }
 
-  private async asignarRolInvitado(tx: Prisma.TransactionClient) {
-    // Crear rol invitado y permisos en una sola transacción
-    const [rolInvitado, permisoLee] = await Promise.all([
-      tx.rol.upsert({
-        where: { nombre: 'Invitado' },
-        update: {},
-        create: { nombre: 'Invitado' },
-        select: { id: true }
-      }),
-      tx.permiso.upsert({
-        where: { nombre: 'layouts:Lee' },
-        update: {},
-        create: {
-          nombre: 'layouts:Lee',
-          descripcion: 'Permiso de solo lectura en layouts'
-        },
-        select: { id: true }
-      })
-    ]);
-
-    await tx.rolXPermiso.create({
-      data: {
-        id_rol: rolInvitado.id,
-        id_permiso: permisoLee.id
-      },
-      skipDuplicates: true
-    });
-
-    return { rol: rolInvitado, permisos: [permisoLee] };
-  }
-
-  async obtenerUsuarios() {
-    try {
-      const usuarios = await prisma.usuario.findMany({
-        select: {
-          id: true,
-          nombres: true,
-          apellidos: true,
-          username: true,
-          estado: {
-            select: { nombre: true }
-          },
-          rol: {
-            select: {
-              nombre: true
-            }
-          }
-        }
-      });
-
-      if (!usuarios.length) {
-        throw {
-          ok: false,
-          status_cod: 404,
-          data: "No se encontraron datos"
-        };
-      }
-
-      return usuarios.map((usuario:
-        {
-          nombres: any; 
-          apellidos: any;
-          username: any; 
-          rol: { nombre: any; };
-          estado: { nombre: any; };
-        }) => ({
-          nombres: usuario.nombres,
-          apellidos: usuario.apellidos,
-          nom_user: usuario.username,
-          rol: usuario.rol.nombre,
-          estado: usuario.estado.nombre,
-        }));
-    } catch (error: any) {
-      throw {
-        ok: error.ok || false,
-        status_cod: error.status_cod || 400,
-        data: error.message || "Ocurrió un error consultando el usuario"
-      };
-    }
-  }
-
-  async obtenerUsuariosXid(usuarioData: { id: string | number; }) {
+  async obtenerUsuariosXid(usuarioData: UsuarioDataXid) {
     try {
       const usuario = await prisma.usuario.findUnique({
-        where: { id: Number(usuarioData.id) },
+        where: { documento: usuarioData.numero_documento.toString() },
         select: {
-          id: true,
+          documento: true,
           nombres: true,
           estado: {
             select: { nombre: true }
@@ -192,37 +238,37 @@ export default class UsuariosAdapter implements UsuariosPort {
 
       if (!usuario) {
         throw {
-          ok: false,
-          status_cod: 409,
+          ok: true,
+          status_cod: 200,
           data: "El usuario solicitado no existe en la base de datos",
         };
       }
 
       return {
-        id: usuario.id,
+        id: usuario.documento,
         nombres: usuario.nombres,
-        estado: usuario.estado.nombre,
+        estado_usuario: usuario.estado.nombre,
         rol: usuario.rol.nombre
       };
     } catch (error: any) {
       throw {
         ok: error.ok || false,
         status_cod: error.status_cod || 400,
-        data: error.message || "Ocurrió un error consultando el usuario"
+        data: error.message || error.data || "Ocurrió un error consultando el usuario",
       };
     }
   }
 
-  async delUsuario(usuarioData: { id: string }) {
+  async delUsuario(usuarioData: UsuarioDataXid) {
     try {
       const usuario = await prisma.usuario.delete({
-        where: { id: Number(usuarioData.id) },
+        where: { documento: usuarioData.numero_documento.toString() },
       });
 
       return {
         ok: true,
         message: "Usuario eliminado correctamente",
-        usuario: usuario.id,
+        usuario: usuario.documento,
       };
     } catch (error: any) {
       if (error.code === "P2025") {
@@ -233,30 +279,38 @@ export default class UsuariosAdapter implements UsuariosPort {
         };
       }
       throw {
-        ok: error.ok || false,
-        status_cod: error.status_cod || 400,
-        data: error.message || "Ocurrió un error consultando el usuario"
+        ok: false,
+        status_cod: 400,
+        data: error.message || "Ocurrió un error eliminando el usuario",
       };
     }
   }
 
-  async actualizaUsuario(usuarioData: {
-    nombres?: string;
-    apellidos?: string;
-    id_estado?: number | string;
-    id_rol?: number | string;
-    id: number | string;
-  }) {
+  async actualizaUsuario(usuarioData: UsuarioDataUpdate) {
     try {
-      const { id, id_estado, id_rol, ...updates } = usuarioData;
+      const { numero_documento, estado_id, id_rol, fecha_nacimiento, numero_contacto, ...updates } = usuarioData;
+
+      // Convertir valores numéricos si están presentes
+      const dataToUpdate: Prisma.UsuarioUpdateInput = {
+        ...updates,
+        ...(numero_contacto !== undefined && { num_contacto: numero_contacto }),
+        ...(estado_id !== undefined && { estado: { connect: { id: Number(estado_id) } } }),
+        ...(id_rol !== undefined && { rol: { connect: { id: Number(id_rol) } } }),
+        ...(fecha_nacimiento !== undefined && { 
+          fecha_nacimiento: {
+            update: { fecha: fecha_nacimiento }
+          } 
+        })
+      };
 
       const usuarioActualizado = await prisma.usuario.update({
-        where: { id: Number(id) },
-        data: {
-          ...updates,
-          id_estado: id_estado !== undefined ? Number(id_estado) : undefined,
-          id_rol: id_rol !== undefined ? Number(id_rol) : undefined,
-        },
+        where: { documento: numero_documento.toString() },
+        data: dataToUpdate,
+        include: {
+          fecha_nacimiento: true,
+          rol: true,
+          estado: true
+        }
       });
 
       return {
@@ -265,12 +319,21 @@ export default class UsuariosAdapter implements UsuariosPort {
         usuario: usuarioActualizado,
       };
     } catch (error: any) {
-      validarExistente(error.code, "El usuario solicitado");
+      const validacion = validarExistente(error.code, error.meta?.target);
+      if (!validacion.ok) {
+        throw {
+          ok: validacion.ok,
+          status_cod: 409,
+          data: validacion.data,
+        };
+      }
       throw {
-        ok: error.ok || false,
-        status_cod: error.status_cod || 400,
-        data: error.message || "Ocurrió un error consultando el usuario"
+        ok: false,
+        status_cod: 400,
+        data: error.message || "Ocurrió un error actualizando el usuario",
       };
     }
   }
+
 }
+

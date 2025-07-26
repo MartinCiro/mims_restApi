@@ -1,15 +1,14 @@
-Aquí tienes una versión mejorada de tu guía, con correcciones de formato, mayor claridad y consistencia en la información:  
-
 ---
 
 # 📌 **Guía para Configurar un Contenedor Postgres con Docker**
 
 Este documento explica cómo configurar un contenedor de **Postgres** con Docker, realizar operaciones con la base de datos y entender la estructura del proyecto.
-
 ---
 
+
 ## 🚀 **1. Iniciar el Contenedor**  
-Para desplegar el contenedor, ejecuta (renombrar example a .env sino lo tiene):
+
+Para desplegar el contenedor, ejecuta (renombrar example a .env sino lo tiene []):
 
 ```bash
 docker-compose up -d
@@ -18,6 +17,7 @@ docker-compose up -d
 ---
 
 ## 🧪 **2. Ejecutar Pruebas**
+
 Para iniciar las pruebas de microservicios, usa:
 
 ```bash
@@ -27,6 +27,7 @@ docker exec -it nestjs_app sh -c "npm test"
 ---
 
 ## 📄 **3. Acceder a la Documentación de la API**
+
 La documentación de la API se aloja en la siguiente ruta (el puerto varia segun el .env):
 
 ```
@@ -40,44 +41,60 @@ Si la documentación no carga, verifica que el archivo `docs.html` exista en la 
 # 🏗 **Configuración de la Base de Datos**
 
 ## **4. Crear el Contenedor de PostgreSQL**
+
 Para desplegar un contenedor con **PostgreSQL** y exponer el puerto `5432`, ejecuta:
 
 ```bash
-docker run --name psql -e POSTGRES_USER=ciro -e POSTGRES_PASSWORD=tu_contraseña -p 5432:5432 -d postgres
+docker run --name psql -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=your_password -e POSTGRES_DB=nom_bd_psql -v postgres_data:/var/lib/postgresql/data -p 5432:5432 -d postgres:16-alpine
 ```
 
 ---
 
 ## **5. Crear la Base de Datos**  
-Si la base de datos `bd_mims` no existe, créala con:
+
+Si la base de datos `nom_bd_psql` no existe, créala con:
 
 ```bash
-docker exec -it psql psql -U postgres -c "CREATE DATABASE bd_mims;"
+docker exec -it psql psql -U postgres -c "CREATE DATABASE nom_bd_psql;"
 ```
 
 ---
 
 ## **6. Crear una Copia de Seguridad**  
-Para generar un respaldo de la base de datos `bd_mims`, usa:
+
+Para generar un respaldo de la base de datos `nom_bd_psql`, usa:
 
 ```bash
-docker exec -t psql pg_dump -U postgres -d bd_mims -Fc > backup.dump
-```
+docker exec -t psql bash -c 'pg_dump -U postgres -Fc -d nom_bd_psql > /tmp/backup.dump'
+docker cp psql:/tmp/backup.dump ./src/bd_backup/backup.dump
 
+```
 ---
 
 ## **7. Restaurar una Copia de Seguridad**
+
 Para restaurar una copia de seguridad, ejecuta:
 
 ```bash
-docker exec -it psql psql -U postgres -c "DROP DATABASE IF EXISTS bd_mims;"
-docker exec -it psql psql -U postgres -c "CREATE DATABASE bd_mims;"
-docker exec -i psql pg_restore -U postgres -d bd_mims < backup.dump
+docker cp ./src/bd_backup/backup.dump psql:/tmp/backup.dump
+docker exec -it psql pg_restore -U postgres -d nom_bd_psql -Fc /tmp/backup.dump
+
+```
+
+---
+## **8. Variables de Entorno****
+
+Verifique o renombre el archivo example, el siguiente comando se usa para generar el JWT_SECRETO
+
+```bash
+openssl rand -hex 32
+
 ```
 
 ---
 
-# 📂 **Estructura del Proyecto**
+# 📂 **Estructura del Back**
+
 Este proyecto sigue una organización modular basada en **arquitectura hexagonal**, lo que mejora la mantenibilidad y escalabilidad.
 
 ```
@@ -107,6 +124,7 @@ Este proyecto sigue una organización modular basada en **arquitectura hexagonal
 ---
 
 # 📌 **Descripción General**
+
 - **`/core`** → Contiene la lógica de negocio pura, independiente de la infraestructura.  
 - **`/interfaces/api`** → Define los controladores, módulos y DTOs para la API REST.  
 - **`/config`** → Configuración general del proyecto (variables de entorno, NestJS, etc.).  
@@ -115,12 +133,3 @@ Este proyecto sigue una organización modular basada en **arquitectura hexagonal
 Esta estructura modular **facilita la escalabilidad y el mantenimiento** del código. 🚀  
 
 ---
-
-🔹 **Con estos pasos, tu entorno estará listo para funcionar sin problemas.**  
-Si tienes dudas, revisa los logs de Docker con:  
-
-```bash
-docker logs -f psql
-```
-
----  

@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import EstadosPort from './estadoPort';
-import { EstadoData, EstadoDataUpdate, EstadoDataXid } from 'api/estados/models/estado.model';
+import { EstadoData, EstadoDataUpdate, EstadoDataXid } from '@api/estados/models/estado.model';
 
 @Injectable() 
 export class EstadoService {

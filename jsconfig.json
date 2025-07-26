@@ -3,17 +3,9 @@
     "baseUrl": ".",
     "paths": {
       "@src/*": ["src/*"],
+      "@core/*": ["src/core/*"],
       "@utils/*": ["src/Utils/*"],
-      "@routes/*": ["src/routes/*"],
-      "@assets/*": ["src/assets/*"],
-      "@hooks/*": ["src/Lib/Hooks/*"],
-      "@screens/*": ["src/UI/screens/*"],
-      "@layouts/*": ["src/Lib/Layouts/*"],
-      "@services/*": ["src/Lib/Services/*"],
-      "@styles/*": ["src/UI/screens/styles/*"],
-      "@constants/*": ["src/Utils/constants/*"],
-      "@api/*": ["src/interfaces/api/*"],
-      "@componentsUseable/*": ["src/UI/useable-components/*"]
+      "@api/*": ["src/interfaces/api/*"]
     }
   },
   "include": ["src"]

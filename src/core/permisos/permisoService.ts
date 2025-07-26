@@ -1,7 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import PermisosPort from './permisoPort';
 
-import { PermisoData, PermisoDataUpdate, PermisoDataXid } from 'api/permisos/models/permiso.model';
+import { PermisoData, PermisoDataUpdate, PermisoDataXid } from '@api/permisos/models/permiso.model';
+
 
 @Injectable() 
 export class PermisoService {
@@ -17,15 +18,7 @@ export class PermisoService {
     return await this.permisoPort.crearPermisos(permisoData);
   }
 
-  async obtenerPermisoXid(permisoData: PermisoDataXid) {
-    return await this.permisoPort.obtenerPermisosXid(permisoData);
-  }
-
-  async upPermiso(permisoData: PermisoDataUpdate) {
+  async upPermiso(permisoData: PermisoData) {
     return await this.permisoPort.actualizaPermiso(permisoData);
-  }
-
-  async delPermiso(permisoData: PermisoDataXid) {
-    return await this.permisoPort.delPermiso(permisoData);
   }
 }

@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import AuthService from 'core/auth/authService';
-import AuthPortt from 'core/auth/authPort';
-import { AuthPort } from 'api/auth/auth-port.token';
+import AuthService from '@core/auth/authService';
+import AuthPortt from '@core/auth/authPort';
+import { AuthPort } from '@api/auth/auth-port.token';
 import bcrypt from 'bcryptjs';
 import config from 'src/config';
 

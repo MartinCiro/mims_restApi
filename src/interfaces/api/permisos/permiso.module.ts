@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { PermisoService } from 'core/permisos/permisoService';
+import { PermisoService } from '@core/permisos/permisoService';
 import { PermisoController } from './permisoController';
-import { RedisService } from 'shared/cache/redis.service';
+import { RedisService } from '@shared/cache/redis.service';
 
-import  PermisosAdapter  from 'db/permisoAdapter';
+import  PermisosAdapter  from '@db/permisoAdapter';
 import { PermisosPortToken } from './permiso-port.token';
 
 @Module({

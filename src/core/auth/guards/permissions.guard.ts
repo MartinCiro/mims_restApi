@@ -1,6 +1,6 @@
 import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { RedisService } from 'shared/cache/redis.service';
+import { RedisService } from '@shared/cache/redis.service';
 import { ResponseBody } from 'src/interfaces/api/models/ResponseBody';
 import { HttpException } from '@nestjs/common';
 

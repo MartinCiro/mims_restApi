@@ -1,14 +1,15 @@
-import { IsNotEmpty, IsNumber, IsString, MinLength, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsArray, ArrayMinSize } from 'class-validator';
 
 export class CrearPermisoDto {
 
-    @IsNotEmpty({ message: 'El nombre es obligatorio' })
-    @IsString({ message: 'El texto de nombre no es valido' })
-    readonly nombre!: string
+  @IsArray({ message: 'Debe ser una lista de permisos' })
+  @ArrayMinSize(1, { message: 'Debe proporcionar al menos un permiso' })
+  @IsString({ each: true, message: 'Cada permiso debe ser un texto válido' })
+  readonly permisos!: string[];
 
-    @IsOptional()
-    @IsString({ message: 'El texto de descripción no es valido' })
-    readonly descripcion!: string;
-  
-  }
+  @IsOptional()
+  @IsString({ message: 'El texto de descripción no es valido' })
+  readonly descripcion?: string;
+
+}
 

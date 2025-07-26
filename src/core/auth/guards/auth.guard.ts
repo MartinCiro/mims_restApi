@@ -1,7 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, HttpException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { verifyJWT } from 'core/auth/service/jwtService';
-import { ResponseBody } from 'api/models/ResponseBody'; 
+import { verifyJWT } from '@core/auth/service/jwtService';
+import { ResponseBody } from '@api/models/ResponseBody'; 
 
 // Caché en memoria para almacenar información de usuarios autenticados
 const userCache = new Map<string, any>();

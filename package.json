@@ -1,10 +1,11 @@
 {
-  "name": "inventario-backend",
+  "name": "template-backend",
   "version": "1.0.0",
-  "description": "Backend para inventario",
+  "description": "Backend de un template de NestJS con Prisma y Redis",
   "main": "./src/index.ts",
   "scripts": {
-    "start": "node -r ts-node/register src/index.ts",
+    "build": "tsc --build",
+    "start": "node dist/index.js",
     "dev": "npm-run-all --parallel gen server docs",
     "server": "nodemon --exec 'node -r tsconfig-paths/register -r ts-node/register' ./src/index.ts",
     "docs": "aglio -i ./api-docs.apib -s --header 'Authorization' --prefix /api",
@@ -14,8 +15,17 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch"
   },
+  "_moduleAliases": {
+    "@src": "./dist/src",
+    "@core": "./dist/src/core",
+    "@db": "./dist/src/interfaces/db",
+    "@api": "./dist/src/interfaces/api",
+    "@interfaces": "./dist/src/interfaces",
+    "@utils": "./dist/src/interfaces/api/utils",
+    "@shared": "./dist/src/shared"
+  },
   "keywords": [
-    "mims"
+    "template"
   ],
   "author": "Martin Ciro",
   "license": "ISC",
@@ -45,7 +55,10 @@
     "class-validator": "^0.14.1",
     "dotenv": "^16.0.3",
     "jsonwebtoken": "^9.0.2",
+    "module-alias": "^2.2.3",
     "nats": "^2.29.2",
+    "nestjs-form-data": "^1.9.93",
+    "node-fetch": "^3.3.2",
     "pg": "^8.11.0",
     "redis": "^4.7.0",
     "reflect-metadata": "^0.2.2",

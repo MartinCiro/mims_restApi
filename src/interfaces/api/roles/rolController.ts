@@ -2,15 +2,19 @@ import {
   Controller, Post, Body, HttpException, HttpStatus, HttpCode,
   UsePipes, ValidationPipe, Get, Put, Delete, UseGuards, Req
 } from '@nestjs/common';
-import { RolService } from 'core/roles/rolService';
-import { ResponseBody } from 'api/models/ResponseBody';
+
+import { handleException } from '@utils/validaciones';
+import { RolService } from '@core/roles/rolService';
+import { ResponseBody } from '@api/models/ResponseBody';
+import { AuthGuard } from '@core/auth/guards/auth.guard';
+
 import { CrearRolDto } from './dtos/crearRol.dto';
 import { ObtenerRolesDto } from './dtos/obtenerRol.dto';
-import { ActualizarRolDto } from './dtos/actualizarRol.dto';
 import { EliminarRolDto } from './dtos/eliminarRol.dto';
-import { AuthGuard } from 'core/auth/guards/auth.guard';
-import { PermissionsGuard } from 'core/auth/guards/permissions.guard';
-import { Permissions } from 'core/auth/decorators/permissions.decorator';
+import { ActualizarRolDto } from './dtos/actualizarRol.dto';
+
+import { PermissionsGuard } from '@core/auth/guards/permissions.guard';
+import { Permissions } from '@core/auth/decorators/permissions.decorator';
 
 @Controller('roles')
 @UseGuards(AuthGuard) // Todas las rutas requieren autenticación
@@ -35,7 +39,7 @@ export class RolController {
       await this.rolService.crearRol(body);
       return new ResponseBody<string>(true, 201, "Se ha creado el rol exitosamente");
     } catch (error) {
-      this.handleException(error);
+      handleException(error);
     }
   }
 
@@ -60,7 +64,7 @@ export class RolController {
 
       return new ResponseBody<any>(true, 200, roles);
     } catch (error) {
-      this.handleException(error);
+      handleException(error);
     }
   }
 
@@ -93,7 +97,7 @@ export class RolController {
       await this.rolService.upRol(body);
       return new ResponseBody(true, HttpStatus.OK, "Rol actualizado exitosamente.");
     } catch (error) {
-      this.handleException(error);
+      handleException(error);
     }
   }
 
@@ -115,7 +119,7 @@ export class RolController {
       await this.rolService.delRol({ id: eliminarRolDto.id});
       return new ResponseBody(true, 201, "Se ha eliminado el rol exitosamente");
     } catch (error) {
-      this.handleException(error);
+      handleException(error);
     }
   }
 

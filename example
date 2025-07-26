@@ -1,10 +1,20 @@
 env = Dev
 PORT = 4000
 
-# Secreto de JWT PARA DESARROLLO (EJEMPLO)
-JWT_SECRETO = VGhpcyBpcyBhIHZlcnkgc2VjdXJlIHN0cmluZw==
+# --- PostgreSQL ---
+PORT_DB=port_db                   # Usa el puerto estándar
+HOST_DB=host_or_name_container           # Nombre del servicio en Docker
+USER_DB=user               # Usuario por defecto de PostgreSQL
+PASS_DB=passDB                  # Cambia esto en producción!
+NAME_DB=nomDB
+
+# --- Redis ---
+REDIS_HOST=host_or_name_container       # Nombre del servicio
+REDIS_PORT=port_redis
+REDIS_PASSWORD=pass_redis    # Nueva variable para Redis auth
+
+# Secreto de JWT PARA DESARROLLO (EJEMPLO, NO USAR EN PRODUCCIÓN)
+JWT_SECRET = "3st3_3s_Un_3j3mpl0_D3_Cl4v3_S3cr3t4_D3v_123!@#"
 
 # Parámetro de semilla del JWT
 JWT_SALT = 8
-
-DATABASE_URL=postgresql://postgres:ciro@psql2:5432/bd_mims

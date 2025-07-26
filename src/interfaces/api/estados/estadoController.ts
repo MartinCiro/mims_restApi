@@ -2,15 +2,17 @@ import {
   Controller, Post, Body, HttpException, HttpStatus, HttpCode,
   UsePipes, ValidationPipe, Get, Put, Delete, UseGuards, Req
 } from '@nestjs/common';
-import { EstadoService } from 'core/estados/estadoService';
-import { ResponseBody } from 'api/models/ResponseBody';
+import { EstadoService } from '@core/estados/estadoService';
+import { ResponseBody } from '@api/models/ResponseBody';
 import { CrearEstadoDto } from './dtos/crearEstado.dto';
 import { ObtenerEstadosDto } from './dtos/obtenerEstado.dto';
 import { ActualizarEstadoDto } from './dtos/actualizarEstado.dto';
 import { EliminarEstadoDto } from './dtos/eliminarEstado.dto';
-import { AuthGuard } from 'core/auth/guards/auth.guard';
-import { PermissionsGuard } from 'core/auth/guards/permissions.guard';
-import { Permissions } from 'core/auth/decorators/permissions.decorator';
+import { AuthGuard } from '@core/auth/guards/auth.guard';
+import { PermissionsGuard } from '@core/auth/guards/permissions.guard';
+import { Permissions } from '@core/auth/decorators/permissions.decorator';
+
+import { handleException } from '@utils/validaciones';
 
 @Controller('estados')
 @UseGuards(AuthGuard) // Todas las rutas requieren autenticación
@@ -36,7 +38,7 @@ export class EstadoController {
       await this.rolService.crearEstado(body);
       return new ResponseBody<string>(true, 201, "Se ha creado el rol exitosamente");
     } catch (error) {
-      this.handleException(error);
+      handleException(error);
     }
   }
 
@@ -61,7 +63,7 @@ export class EstadoController {
 
       return new ResponseBody<any>(true, 200, estados);
     } catch (error) {
-      this.handleException(error);
+      handleException(error);
     }
   }
 
@@ -94,7 +96,7 @@ export class EstadoController {
       await this.rolService.upEstado(body);
       return new ResponseBody(true, HttpStatus.OK, "Estado actualizado exitosamente.");
     } catch (error) {
-      this.handleException(error);
+      handleException(error);
     }
   }
 
@@ -116,7 +118,7 @@ export class EstadoController {
       await this.rolService.delEstado({ id: eliminarEstadoDto.id });
       return new ResponseBody(true, 201, "Se ha eliminado el rol exitosamente");
     } catch (error) {
-      this.handleException(error);
+      handleException(error);
     }
   }
 

@@ -1,22 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import UsuariosPort from './usuarioPort';
-
-interface UsuarioData {
-  username: string;
-  nombres: string;
-  apellidos: string;
-  pass: string; 
-  id_estado?: number | string; 
-  id_rol?: number | string; 
-}
-
-  
-interface UsuarioDataXid {
-  id: number | string;
-}
-
-type UsuarioDataUpdate = Partial<Omit<UsuarioData, 'id'>> & UsuarioDataXid;
-
+import { UsuarioData, UsuarioDataUpdate, UsuarioDataXid } from '@api/usuarios/models/usuario.model';
 
 @Injectable() 
 export class UsuarioService {

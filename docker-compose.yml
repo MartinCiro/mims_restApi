@@ -1,56 +1,51 @@
 services:
-  app:
+  app_backend:
     image: node:20
-    working_dir: /usr/src/app
+    container_name: template_backend
     build: .
-    env_file:
-      - .env
-    container_name: inventario_app
+    working_dir: /usr/src/app
     restart: always
     depends_on:
-      - nats
       - redis
     ports:
-      - "4000:4000"
+      - "3000:${PORT}"
     environment:
-      - NODE_ENV=Dev
-      - DB_HOST=psql  
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=ciro
-      - DB_NAME=personal_inventary
-      - NATS_URL=nats://nats:4222
-      - REDIS_URL=redis://redis:6379
+      - NODE_ENV=${env}
+      - DB_HOST=${HOST_DB}  
+      - DB_PORT=${PORT_DB}
+      - DB_USER=${USER_DB}
+      - DB_PASSWORD=${PASS_DB}
+      - DB_NAME=${NAME_DB}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}
+      - JWT_SECRET=${JWT_SECRETO}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+      - JWT_SALT=${JWT_SALT}
+      - env=${env}
+      - DB_URL=postgresql://${USER_DB}:${PASS_DB}@${HOST_DB}:${PORT_DB}/${NAME_DB}
+      
     volumes:
       - .:/usr/src/app
-      - /usr/src/app/node_modules
+      - ./node_modules:/usr/src/app/node_modules
     networks:
       - docker_app_network
     command: ["sh", "-c", "npm install && yes | npx prisma generate && npm run dev"]
-
-  nats:
-    image: nats:latest
-    container_name: nats_server
-    restart: always
-    ports:
-      - "4222:4222"
-      - "8222:8222"
-    networks:
-      - docker_app_network
     
   redis:
     image: redis:latest
-    container_name: redis_service
-    restart: always
-    ports:
-      - "6379:6379"
+    container_name: redis_service_t
+    restart: unless-stopped
     networks:
       - docker_app_network
     volumes:
       - redis_data:/data
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    env_file:
+      - .env
+
 volumes:
   redis_data:
+    driver: local
 
 networks:
   docker_app_network:
-    external: true
+    driver: bridge

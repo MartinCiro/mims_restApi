@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import RolesPort from './rolPort';
-import { RolData, RolDataUpdate, RolDataXid } from 'api/roles/models/rol.model';
+import { RolData, RolDataUpdate, RolDataXid } from '@api/roles/models/rol.model';
 
 @Injectable() 
 export class RolService {

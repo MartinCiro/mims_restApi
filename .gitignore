@@ -149,3 +149,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+repo-img
+.env.production
+.env.development

@@ -5,23 +5,26 @@
     "moduleResolution": "Node",
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
+    "allowJs": true,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "preserveSymlinks": false,
+    "noImplicitAny": false,
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./", 
     "baseUrl": "./",
     "paths": {
-      "src/*": ["src/*"],
-      "core/*": ["src/core/*"],
-      "db/*": ["src/interfaces/db/*"],
-      "modules/*": ["src/modules/*"],
-      "interfaces/*": ["src/interfaces/*"],
-      "shared/*": ["src/shared/*"],
-      "api/*": ["src/interfaces/api/*"],
+      "@src/*": ["src/*"],
+      "@core/*": ["src/core/*"],
+      "@shared/*": ["src/shared/*"],
+      "@db/*": ["src/interfaces/db/*"],
+      "@api/*": ["src/interfaces/api/*"],
+      "@interfaces/*": ["src/interfaces/*"],
+      "@utils/*": ["src/interfaces/api/utils/*"]
     }
   },
-  "include": ["src/**/*.ts"]
+  "include": ["src/**/*.ts", "src/**/*.js", "ecosystem.config.js"],
+  "exclude": ["**/*.spec.ts", "**/*.test.ts", "node_modules", "dist"]
 }

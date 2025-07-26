@@ -16,14 +16,11 @@ export default {
   PortDB: process.env.PortDB,
 
   // Auth
-  JWT_SECRETO: process.env.JWT_SECRETO,
+  JWT_SECRETO: process.env.JWT_SECRET,
   SALT: process.env.JWT_SALT,
   JWT_TIEMPO_EXPIRA: process.env.JWT_TIEMPO_EXPIRA || 3600,
 
   // Redis
   REDIS_TTL: process.env.REDIS_TTL ? Number(process.env.REDIS_TTL) : 3600,
-  REDIS_URL: process.env.REDIS_URL || 'redis://redis_service:6379',
-
-  // Nats
-  NATS_URL: process.env.NATS_URL || 'nats://127.0.0.1:4222',
+  REDIS_URL: process.env.REDIS_URL || 'redis://:pass@redis_service:6379',
 };

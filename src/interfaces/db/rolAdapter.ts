@@ -1,10 +1,10 @@
-import RolesPort from 'core/roles/rolPort';
+import RolesPort from '@core/roles/rolPort';
 import { PrismaClient } from '@prisma/client';
-import { validarExistente, validarNoExistente } from 'api/utils/validaciones';
+import { validarExistente, validarNoExistente } from '@api/utils/validaciones';
 import { Injectable } from '@nestjs/common';
 import { ForbiddenException } from '@nestjs/common';
-import { ResponseBody } from 'api/models/ResponseBody';
-import { RolData, RolDataUpdate, RolDataXid } from 'api/roles/models/rol.model';
+import { ResponseBody } from '@api/models/ResponseBody';
+import { RolData, RolDataUpdate, RolDataXid } from '@api/roles/models/rol.model';
 
 const prisma = new PrismaClient();
 

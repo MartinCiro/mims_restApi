@@ -1,6 +1,7 @@
+import 'module-alias/register';
 import { Logger } from '@nestjs/common';
-import createApp from 'src/app';
-import config from 'src/config';
+import createApp from '@src/app';
+import config from '@src/config';
 
 const port = config.port || 3000;
 

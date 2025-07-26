@@ -1,4 +1,4 @@
-import { RolData, RolDataUpdate, RolDataXid } from 'api/roles/models/rol.model';
+import { RolData, RolDataUpdate, RolDataXid } from '@api/roles/models/rol.model';
 export default interface RolesPort {
     crearRoles(rolData: RolData): Promise<any>;
     obtenerRoles(): Promise<any>;
