@@ -1,0 +1,12 @@
+# Entorno
+ENVIRONMENT=development
+DEBUG=true or false
+PORT=8080
+
+# Base de datos
+DATABASE_URL=database bd
+DATABASE_LOG_MODE=true or false
+
+# WhatsApp
+WHATSAPP_PROVIDER=whatsmeow
+SESSION_TIMEOUT=300
