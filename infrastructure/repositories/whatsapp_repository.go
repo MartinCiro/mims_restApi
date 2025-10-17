@@ -1,8 +1,8 @@
 package repositories
 
 import (
+	core_wsp "api_go/core/whatsapp"
 	"context"
-	core_wsp "scrapper_go_email/core/whatsapp"
 	"sync"
 )
 

@@ -1,8 +1,8 @@
 package database
 
 import (
+	"api_go/infrastructure/database/models"
 	"log"
-	"scrapper_go_email/infrastructure/database/models"
 )
 
 func RunMigrations() error {

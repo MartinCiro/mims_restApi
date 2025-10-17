@@ -1,13 +1,14 @@
 package main
 
 import (
+	cfg "api_go/config"
+	"api_go/core/common"
+	"api_go/core/whatsapp"
+	"api_go/infrastructure/database"
+	"api_go/infrastructure/external"
+	"api_go/infrastructure/repositories"
+	api_whatsapp "api_go/interfaces/api/whatsapp"
 	"log"
-	cfg "scrapper_go_email/config"
-	"scrapper_go_email/core/whatsapp"
-	"scrapper_go_email/infrastructure/database"
-	"scrapper_go_email/infrastructure/external"
-	"scrapper_go_email/infrastructure/repositories"
-	api_whatsapp "scrapper_go_email/interfaces/api/whatsapp"
 
 	"github.com/gin-gonic/gin"
 )
@@ -36,7 +37,7 @@ func main() {
 	}
 
 	// Infraestructura
-	whatsappRepo := repositories.NewGormWhatsAppRepository() // Cambiado a GORM
+	whatsappRepo := repositories.NewGormWhatsAppRepository()
 	whatsmeowAdapter := external.NewWhatsMeowAdapter()
 
 	// Core
@@ -52,13 +53,29 @@ func main() {
 	// Registrar rutas
 	api_whatsapp.RegisterRoutes(apiGroup, whatsappController)
 
-	// Endpoint de health check
+	// Endpoint de health check - ACTUALIZADO al formato ResponseBody
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{
+		healthData := map[string]interface{}{
 			"status":   "healthy",
 			"service":  "whatsapp-api",
 			"database": "connected",
-		})
+		}
+
+		response := common.NewResponseBody(true, 200, healthData)
+		c.JSON(200, response)
+	})
+
+	// Endpoint de info - ACTUALIZADO
+	router.GET("/info", func(c *gin.Context) {
+		infoData := map[string]interface{}{
+			"name":        "WhatsApp API",
+			"version":     "1.0.0",
+			"environment": cfg.Environment,
+			"provider":    cfg.WhatsAppProvider,
+		}
+
+		response := common.NewResponseBody(true, 200, infoData)
+		c.JSON(200, response)
 	})
 
 	// Iniciar servidor

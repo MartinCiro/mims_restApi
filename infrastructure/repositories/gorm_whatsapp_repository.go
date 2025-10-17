@@ -1,12 +1,12 @@
 package repositories
 
 import (
+	"api_go/core/whatsapp"
+	"api_go/infrastructure/database"
+	"api_go/infrastructure/database/models"
 	"context"
 	"encoding/json"
 	"fmt"
-	"scrapper_go_email/core/whatsapp"
-	"scrapper_go_email/infrastructure/database"
-	"scrapper_go_email/infrastructure/database/models"
 
 	"gorm.io/gorm"
 )

@@ -1,8 +1,8 @@
 package common
 
 import (
+	"api_go/core/common"
 	"net/http"
-	"scrapper_go_email/core/common"
 
 	"github.com/gin-gonic/gin"
 )

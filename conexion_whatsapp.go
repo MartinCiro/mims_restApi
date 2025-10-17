@@ -20,7 +20,7 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 	_ "modernc.org/sqlite"
 
-	wsp "scrapper_go_email/handlers"
+	wsp "api_go/handlers"
 )
 
 var (

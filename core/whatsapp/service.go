@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	cmn "scrapper_go_email/core/common"
+	cmn "api_go/core/common"
 )
 
 type whatsAppServiceImpl struct {

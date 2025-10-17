@@ -1,8 +1,8 @@
 package whatsapp
 
 import (
-	"scrapper_go_email/core/whatsapp"
-	"scrapper_go_email/interfaces/api/common"
+	"api_go/core/whatsapp"
+	"api_go/interfaces/api/common"
 	"time"
 
 	"github.com/gin-gonic/gin"

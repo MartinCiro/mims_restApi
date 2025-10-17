@@ -1,8 +1,8 @@
 package database
 
 import (
+	"api_go/config"
 	"log"
-	"scrapper_go_email/config"
 
 	"github.com/glebarez/sqlite" // Driver puro en Go
 	"gorm.io/gorm"
