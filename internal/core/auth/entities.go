@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"api_go/pkg/utils"
+
 	"golang.org/x/crypto/bcrypt"
 )
 

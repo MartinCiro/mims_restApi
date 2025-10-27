@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"time"
 
 	"gorm.io/gorm"
 
 	"api_go/config"
+	"api_go/infrastructure/database/models"
 	"api_go/internal/core/auth"
 	"api_go/internal/core/estados"
 	"api_go/internal/infrastructure/database"
@@ -58,7 +58,6 @@ func (a *App) Initialize(cfg *config.Config) error {
 	if cfg.IsDevelopment() {
 		if err := a.runMigrations(); err != nil {
 			log.Printf("⚠️  Error en migraciones: %v", err)
-			// No hacemos fatal para que la app pueda funcionar
 		}
 	}
 
@@ -92,12 +91,12 @@ func (a *App) initializeDatabase() (*gorm.DB, error) {
 	}
 
 	dbConfig := database.DBConfig{
-		Host:     a.Config.ServerDB,
-		Port:     port,
-		User:     a.Config.UserDB,
-		Password: a.Config.PasswordDB,
-		Database: a.Config.Database,
-		SSLMode:  "disable",
+		ServerDB:   a.Config.ServerDB,
+		PortDB:     port,
+		UserDB:     a.Config.UserDB,
+		PasswordDB: a.Config.PasswordDB,
+		Database:   a.Config.Database,
+		SSLMode:    "disable",
 	}
 
 	db, err := database.GetConnection(dbConfig)
@@ -134,14 +133,9 @@ func (a *App) initializeRedis() *redis.Cache {
 }
 
 func (a *App) initializeJWTService() *jwt.JWTService {
-	tokenDuration := time.Duration(a.Config.JWTExpireTime) * time.Second
-	refreshDuration := 7 * 24 * time.Hour // 7 días
-
 	return jwt.NewJWTService(
 		a.Config.JWTSecret,
 		a.Config.Env,
-		tokenDuration,
-		refreshDuration,
 	)
 }
 
@@ -152,10 +146,6 @@ func (a *App) initializeServices() error {
 	// Inicializar adaptadores
 	authAdapter := repositories.NewAuthAdapter(a.DB)
 	estadosAdapter := repositories.NewEstadosAdapter(a.DB, a.RedisCache)
-	usuariosAdapter := repositories.NewUsuariosAdapter(a.DB, a.RedisCache)
-	rolesAdapter := repositories.NewRolesAdapter(a.DB, a.RedisCache)
-	permisosAdapter := repositories.NewPermisosAdapter(a.DB, a.RedisCache)
-
 	// Inicializar servicios del core
 	a.AuthService = auth.NewAuthService(
 		authAdapter,
@@ -165,9 +155,6 @@ func (a *App) initializeServices() error {
 	)
 
 	a.EstadoService = estados.NewEstadoService(estadosAdapter)
-	a.UsuarioService = usuarios.NewUsuarioService(usuariosAdapter)
-	a.RolService = roles.NewRolService(rolesAdapter)
-	a.PermisoService = permisos.NewPermisoService(permisosAdapter)
 
 	log.Println("✅ Servicios del core inicializados correctamente")
 	return nil
@@ -177,7 +164,10 @@ func (a *App) runMigrations() error {
 	log.Println("🔄 Ejecutando migraciones automáticas...")
 
 	// Ejecutar migraciones de GORM
-	if err := database.AutoMigrate(a.DB); err != nil {
+	if err := a.DB.AutoMigrate(
+		&models.Session{},
+		// Agregar otros modelos aquí
+	); err != nil {
 		return fmt.Errorf("error en migraciones automáticas: %v", err)
 	}
 

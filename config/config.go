@@ -1,8 +1,11 @@
 package config
 
 import (
+	"log"
 	"os"
 	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 type Config struct {
@@ -29,8 +32,13 @@ type Config struct {
 
 // Load carga la configuración desde variables de entorno
 func Load() *Config {
-	// Cargar .env si existe (usando godotenv si lo prefieres)
-	// godotenv.Load()
+	// Cargar .env si existe
+	err := godotenv.Load()
+	if err != nil {
+		log.Printf("⚠️  No se pudo cargar el archivo .env: %v", err)
+	} else {
+		log.Println("✅ Archivo .env cargado correctamente")
+	}
 
 	return &Config{
 		// Server Config
@@ -39,10 +47,10 @@ func Load() *Config {
 
 		// Database
 		UserDB:     getEnv("USER_DB", ""),
-		PasswordDB: getEnv("PASSWORD_DB", ""),
-		ServerDB:   getEnv("SERVER_DB", ""),
-		Database:   getEnv("DATABASE", ""),
-		PortDB:     getEnv("PORT_DB", ""),
+		PasswordDB: getEnv("PASS_DB", ""),
+		ServerDB:   getEnv("HOST_DB", ""),
+		Database:   getEnv("NAME_DB", ""),
+		PortDB:     getEnv("PORT_DB", "5432"), // Valor por defecto
 
 		// Auth
 		JWTSecret:     getEnv("JWT_SECRET", ""),

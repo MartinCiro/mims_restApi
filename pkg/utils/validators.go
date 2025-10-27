@@ -75,15 +75,6 @@ func ValidarNoExistente(valor string, nombre interface{}) ValidacionNoExistenteR
 
 // HandleException maneja excepciones y las convierte en respuestas HTTP
 func HandleException(err error) (common.ResponseBody[interface{}], int) {
-	// Si el error ya es una respuesta estructurada
-	if validacionErr, ok := err.(ValidacionNoExistenteResult); ok && !validacionErr.OK {
-		return common.NewErrorResponse(validacionErr.StatusCod, validacionErr.Data), validacionErr.StatusCod
-	}
-
-	if validacionErr, ok := err.(ValidacionResult); ok && !validacionErr.OK {
-		return common.NewErrorResponse(400, validacionErr.Data), 400
-	}
-
 	// Error genérico
 	fmt.Printf("Error interno: %v\n", err)
 	return common.NewErrorResponse(500, "Error interno del servidor"), 500

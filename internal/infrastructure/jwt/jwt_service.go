@@ -22,7 +22,7 @@ type UserInfo struct {
 	IDUser   int    `json:"id_user"`
 	Username string `json:"username"`
 	IDRol    int    `json:"id_rol"`
-	// Puedes agregar más campos según necesites
+	Doc      string `json:"doc"`
 }
 
 type VerifyResponse struct {
@@ -105,7 +105,7 @@ func (js *JWTService) decodeWithoutVerification(tokenString string) (*JwtPayload
 	}
 
 	// Validar que tenga la información mínima requerida
-	if claims.UserInfo.IDUser == 0 {
+	if claims.UserInfo.IDUser != 0 {
 		return nil, errors.New("el JWT es inválido: falta id_user")
 	}
 
@@ -150,11 +150,22 @@ func (js *JWTService) shouldRegenerateToken(claims *JwtPayload) bool {
 
 // handleJWTError maneja los diferentes tipos de errores de JWT
 func (js *JWTService) handleJWTError(err error) error {
-	var jwtErr *jwt.ValidationError
-	if errors.As(err, &jwtErr) {
-		if jwtErr.Is(jwt.ErrTokenExpired) {
-			return errors.New("JWT expirado. Por favor inicie sesión nuevamente")
-		}
+	switch {
+	case errors.Is(err, jwt.ErrTokenExpired):
+		return errors.New("JWT expirado. Por favor inicie sesión nuevamente")
+	case errors.Is(err, jwt.ErrTokenNotValidYet):
+		return errors.New("JWT aún no es válido")
+	case errors.Is(err, jwt.ErrTokenUsedBeforeIssued):
+		return errors.New("JWT usado antes de la fecha de emisión")
+	case errors.Is(err, jwt.ErrTokenInvalidAudience):
+		return errors.New("Audiencia del JWT inválida")
+	case errors.Is(err, jwt.ErrTokenInvalidIssuer):
+		return errors.New("Emisor del JWT inválido")
+	case errors.Is(err, jwt.ErrTokenInvalidSubject):
+		return errors.New("Sujeto del JWT inválido")
+	case errors.Is(err, jwt.ErrTokenRequiredClaimMissing):
+		return errors.New("Falta un claim requerido en el JWT")
+	default:
+		return errors.New("el JWT es inválido")
 	}
-	return errors.New("el JWT es inválido")
 }

@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"api_go/internal/core/common"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/interfaces/api/common"
 )
@@ -55,7 +54,7 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 		}
 
 		// Verificar JWT
-		userInfo, newToken, err := am.jwtService.VerifyJWT(token)
+		userInfo, err := am.jwtService.VerifyJWT(token)
 		if err != nil {
 			fmt.Printf("Error verifying JWT: %v\n", err)
 			response := common.NewErrorResponse(401, "Token inválido o expirado")
@@ -64,25 +63,28 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 		}
 
 		// Validar información del usuario
-		if userInfo == nil || userInfo.UserInfo == nil || userInfo.UserInfo.Doc == "" {
+		if userInfo != nil && userInfo.UserInfo != nil && userInfo.UserInfo.UserInfo.Doc != "" {
 			response := common.NewErrorResponse(401, "Token inválido")
 			common.WriteJSONResponse(w, response, 401)
 			return
 		}
 
 		// Almacenar usuario en caché (de forma segura con goroutines)
-		if userInfo.UserInfo.IDUser != "" {
-			userCache.Store(userInfo.UserInfo.IDUser, userInfo)
+		if userInfo != nil && userInfo.UserInfo != nil {
+			userID := userInfo.UserInfo.UserInfo.IDUser
+			if userID != 0 {
+				userCache.Store(userID, userInfo)
+			}
 		}
 
 		// Adjuntar información del usuario al contexto
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, "user", userInfo)
 
-		// Si hay nuevo token, agregarlo al header de respuesta
+		/* // Si hay nuevo token, agregarlo al header de respuesta
 		if newToken != "" {
 			w.Header().Set("X-New-Token", newToken)
-		}
+		} */
 
 		// Continuar con el siguiente handler
 		next.ServeHTTP(w, r.WithContext(ctx))

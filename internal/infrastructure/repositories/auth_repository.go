@@ -120,12 +120,6 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 		Username:     usuarioDB.Username,
 		PasswordHash: usuarioDB.Pass,
 		IDRol:        &usuarioDB.IDRol,
-		// Campos adicionales según necesidad
-		Nombres:   usuarioDB.Nombres,
-		Apellidos: usuarioDB.Apellidos,
-		Estado:    estadoDB.Nombre,
-		Rol:       rolDB.Nombre,
-		Permisos:  permisos,
 	}, nil
 }
 

@@ -7,10 +7,9 @@ import (
 
 // ResponseBody representa la estructura estándar de respuesta
 type ResponseBody[T any] struct {
-	Success bool   `json:"ok"`
-	Code    int    `json:"statusCode"`
-	Message string `json:"message,omitempty"`
-	Data    T      `json:"result,omitempty"`
+	Success bool `json:"ok"`
+	Code    int  `json:"statusCode"`
+	Data    T    `json:"result"`
 }
 
 // NewResponseBody crea una nueva respuesta
@@ -27,7 +26,6 @@ func NewSuccessResponse[T any](data T) ResponseBody[T] {
 	return ResponseBody[T]{
 		Success: true,
 		Code:    200,
-		Message: "Operación exitosa",
 		Data:    data,
 	}
 }
@@ -37,7 +35,6 @@ func NewErrorResponse(code int, message string) ResponseBody[interface{}] {
 	return ResponseBody[interface{}]{
 		Success: false,
 		Code:    code,
-		Message: message,
 		Data:    nil,
 	}
 }

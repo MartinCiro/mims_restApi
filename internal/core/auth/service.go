@@ -49,7 +49,7 @@ type LoginResponse struct {
 	} `json:"usuario"`
 }
 
-func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.ResponseBody, error) {
+func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.ResponseBody[LoginResponse], error) {
 	// Obtener usuario del puerto de autenticación
 	usuarioRetrieved, err := s.authPort.RetrieveUser(ctx, AuthData{Username: req.Username})
 	if err != nil {
@@ -143,10 +143,9 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.
 		},
 	}
 
-	return &common.ResponseBody{
+	return &common.ResponseBody[LoginResponse]{
 		Success: true,
 		Code:    200,
-		Message: "Login exitoso",
 		Data:    responseData,
 	}, nil
 }

@@ -3,7 +3,6 @@ package database
 import (
 	"fmt"
 	"log"
-	"strconv"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -11,23 +10,23 @@ import (
 )
 
 type DBConfig struct {
-	Host     string
-	Port     int
-	User     string
-	Password string
-	Database string
-	SSLMode  string
+	ServerDB   string
+	PortDB     int
+	UserDB     string
+	PasswordDB string
+	Database   string
+	SSLMode    string
 }
 
 // GetConnection crea y retorna una conexión a la base de datos usando GORM
 func GetConnection(config DBConfig) (*gorm.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=UTC",
-		config.Host,
-		config.User,
-		config.Password,
+		config.ServerDB,
+		config.UserDB,
+		config.PasswordDB,
 		config.Database,
-		config.Port,
+		config.PortDB,
 		config.SSLMode,
 	)
 
@@ -35,7 +34,8 @@ func GetConnection(config DBConfig) (*gorm.DB, error) {
 		Logger: logger.Default.LogMode(logger.Info), // Ajustar según entorno
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error conectando a la base de datos: %v", err)
+		return nil, fmt.Errorf("error conectando a la base de datos: %v\nCredenciales:\n- Host: %s\n- User: %s\n- Database: %s\n- Port: %d\n- SSLMode: %s",
+			err, config.ServerDB, config.UserDB, config.Database, config.PortDB, config.SSLMode)
 	}
 
 	// Configurar conexión pool
@@ -53,27 +53,13 @@ func GetConnection(config DBConfig) (*gorm.DB, error) {
 	return db, nil
 }
 
-// NewDBConfigFromEnv crea configuración desde variables de entorno
-func NewDBConfigFromEnv() DBConfig {
-	port, _ := strconv.Atoi(getEnv("DB_PORT", "5432"))
-
-	return DBConfig{
-		Host:     getEnv("DB_HOST", "localhost"),
-		Port:     port,
-		User:     getEnv("DB_USER", "postgres"),
-		Password: getEnv("DB_PASSWORD", ""),
-		Database: getEnv("DB_NAME", "mi_base_datos"),
-		SSLMode:  getEnv("DB_SSLMODE", "disable"),
-	}
-}
-
-// getEnv obtiene variable de entorno con valor por defecto
+/* // getEnv obtiene variable de entorno con valor por defecto
 func getEnv(key, defaultValue string) string {
 	value := defaultValue
 	// En una implementación real, usarías os.Getenv(key)
 	// Por ahora retornamos el valor por defecto
 	return value
-}
+} */
 
 // HealthCheck verifica que la conexión a la BD esté funcionando
 func HealthCheck(db *gorm.DB) error {

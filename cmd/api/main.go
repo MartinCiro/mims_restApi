@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"api_go/config"
 	"api_go/internal/app"
-	"api_go/internal/interfaces/api/handlers/common"
 	"api_go/internal/interfaces/api/routes"
 )
 
@@ -61,67 +61,6 @@ func main() {
 	} else {
 		log.Println("✅ Servidor cerrado correctamente")
 	}
-}
-
-// setupRouter configura todas las rutas
-func setupRouter(app *app.App) http.Handler {
-	mux := http.NewServeMux()
-
-	// Rutas públicas
-	mux.HandleFunc("/", common.HealthHandler)
-	mux.HandleFunc("/health", common.HealthHandler)
-	mux.HandleFunc("/ready", common.ReadyHandler(app.DB, app.RedisCache))
-
-	// Configurar rutas de la API
-	apiRoutes := routes.SetupAPIRoutes(app)
-	mux.Handle("/api/", http.StripPrefix("/api", apiRoutes))
-
-	// Middleware global (CORS, logging, etc.)
-	return withGlobalMiddleware(mux)
-}
-
-// withGlobalMiddleware aplica middlewares globales
-func withGlobalMiddleware(handler http.Handler) http.Handler {
-	// CORS middleware
-	handler = withCORS(handler)
-
-	// Logging middleware
-	handler = withLogging(handler)
-
-	return handler
-}
-
-// withCORS habilita CORS (equivalente a app.enableCors())
-func withCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Configurar headers CORS
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, jwt")
-
-		// Manejar preflight requests
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-// withLogging middleware para log de requests
-func withLogging(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-
-		// Interceptar response writer para obtener status code
-		rw := &responseWriter{ResponseWriter: w, statusCode: http.StatusOK}
-
-		next.ServeHTTP(rw, r)
-
-		duration := time.Since(start)
-		log.Printf("%s %s %d %v", r.Method, r.URL.Path, rw.statusCode, duration)
-	})
 }
 
 // responseWriter wrapper para interceptar status code
