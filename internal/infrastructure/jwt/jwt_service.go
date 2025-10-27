@@ -1,0 +1,160 @@
+package jwt
+
+import (
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+)
+
+type JWTService struct {
+	secretKey   string
+	environment string
+}
+
+type JwtPayload struct {
+	UserInfo UserInfo `json:"userInfo"`
+	jwt.RegisteredClaims
+}
+
+type UserInfo struct {
+	IDUser   int    `json:"id_user"`
+	Username string `json:"username"`
+	IDRol    int    `json:"id_rol"`
+	// Puedes agregar más campos según necesites
+}
+
+type VerifyResponse struct {
+	UserInfo *JwtPayload
+	JWT      *string
+}
+
+func NewJWTService(secretKey, environment string) *JWTService {
+	return &JWTService{
+		secretKey:   secretKey,
+		environment: environment,
+	}
+}
+
+// GenerateJWT genera un nuevo token JWT
+func (js *JWTService) GenerateJWT(userInfo UserInfo) (string, error) {
+	if js.secretKey == "" {
+		return "", errors.New("JWT_SECRETO no está definido en la configuración")
+	}
+
+	expirationTime := time.Now().Add(1 * time.Hour) // 3600 segundos = 1 hora
+
+	claims := &JwtPayload{
+		UserInfo: userInfo,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expirationTime),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(js.secretKey))
+}
+
+// VerifyJWT verifica y valida un token JWT
+func (js *JWTService) VerifyJWT(tokenString string) (*VerifyResponse, error) {
+	response := &VerifyResponse{}
+
+	// Decodificar sin verificar primero (para desarrollo)
+	if js.environment == "Dev" {
+		decoded, err := js.decodeWithoutVerification(tokenString)
+		if err != nil {
+			return nil, js.handleJWTError(err)
+		}
+		response.UserInfo = decoded
+		return response, nil
+	}
+
+	// Verificación completa para otros entornos
+	verified, err := js.verifyWithSecret(tokenString)
+	if err != nil {
+		return nil, js.handleJWTError(err)
+	}
+
+	response.UserInfo = verified
+
+	// Verificar si el token está cerca de expirar y regenerar
+	if js.shouldRegenerateToken(verified) {
+		newToken, err := js.GenerateJWT(verified.UserInfo)
+		if err != nil {
+			return nil, err
+		}
+		response.JWT = &newToken
+	}
+
+	return response, nil
+}
+
+// decodeWithoutVerification decodifica el token sin verificar la firma (solo para desarrollo)
+func (js *JWTService) decodeWithoutVerification(tokenString string) (*JwtPayload, error) {
+	parser := jwt.NewParser(jwt.WithoutClaimsValidation())
+	token, _, err := parser.ParseUnverified(tokenString, &JwtPayload{})
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*JwtPayload)
+	if !ok {
+		return nil, errors.New("no se pudieron obtener los claims del token")
+	}
+
+	// Validar que tenga la información mínima requerida
+	if claims.UserInfo.IDUser == 0 {
+		return nil, errors.New("el JWT es inválido: falta id_user")
+	}
+
+	return claims, nil
+}
+
+// verifyWithSecret verifica el token con la clave secreta
+func (js *JWTService) verifyWithSecret(tokenString string) (*JwtPayload, error) {
+	if js.secretKey == "" {
+		return nil, errors.New("JWT_SECRETO no está definido en la configuración")
+	}
+
+	token, err := jwt.ParseWithClaims(tokenString, &JwtPayload{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("método de firma inesperado: %v", token.Header["alg"])
+		}
+		return []byte(js.secretKey), nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(*JwtPayload)
+	if !ok || !token.Valid {
+		return nil, errors.New("token inválido")
+	}
+
+	return claims, nil
+}
+
+// shouldRegenerateToken verifica si el token está cerca de expirar (menos de 10 minutos)
+func (js *JWTService) shouldRegenerateToken(claims *JwtPayload) bool {
+	expTime := claims.ExpiresAt
+	if expTime == nil {
+		return false
+	}
+
+	timeUntilExpiry := time.Until(expTime.Time)
+	return timeUntilExpiry < 10*time.Minute
+}
+
+// handleJWTError maneja los diferentes tipos de errores de JWT
+func (js *JWTService) handleJWTError(err error) error {
+	var jwtErr *jwt.ValidationError
+	if errors.As(err, &jwtErr) {
+		if jwtErr.Is(jwt.ErrTokenExpired) {
+			return errors.New("JWT expirado. Por favor inicie sesión nuevamente")
+		}
+	}
+	return errors.New("el JWT es inválido")
+}

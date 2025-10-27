@@ -3,83 +3,87 @@ package config
 import (
 	"os"
 	"strconv"
-
-	"github.com/joho/godotenv"
 )
 
 type Config struct {
-	// Servidor
-	Port        int
-	Debug       bool
-	Environment string
+	// Server Config
+	Port string
+	Env  string
 
-	// Base de datos
-	DatabaseURL     string
-	DatabaseLogMode bool
+	// Database
+	UserDB     string
+	PasswordDB string
+	ServerDB   string
+	Database   string
+	PortDB     string
 
-	// WhatsApp
-	WhatsAppProvider string
-	SessionTimeout   int
+	// Auth
+	JWTSecret     string
+	JWTSalt       string
+	JWTExpireTime int
 
-	// Gmail (si lo necesitas)
-	GmailEmail       string
-	GmailAppPassword string
-
-	// Webhooks
-	WebhookBaseURL string
+	// Redis
+	RedisTTL int
+	RedisURL string
 }
 
-func Load() (*Config, error) {
-	// Cargar archivo .env (opcional - ignora el error si no existe)
-	godotenv.Load()
-
-	port, err := strconv.Atoi(getEnv("PORT", "8080"))
-	if err != nil {
-		return nil, err
-	}
-
-	debug, err := strconv.ParseBool(getEnv("DEBUG", "true"))
-	if err != nil {
-		return nil, err
-	}
-
-	sessionTimeout, err := strconv.Atoi(getEnv("SESSION_TIMEOUT", "300"))
-	if err != nil {
-		return nil, err
-	}
-
-	databaseLogMode, err := strconv.ParseBool(getEnv("DATABASE_LOG_MODE", "false"))
-	if err != nil {
-		return nil, err
-	}
+// Load carga la configuración desde variables de entorno
+func Load() *Config {
+	// Cargar .env si existe (usando godotenv si lo prefieres)
+	// godotenv.Load()
 
 	return &Config{
-		// Servidor
-		Port:        port,
-		Debug:       debug,
-		Environment: getEnv("ENVIRONMENT", "development"),
+		// Server Config
+		Port: getEnv("PORT", "3000"),
+		Env:  getEnv("ENV", "Production"),
 
-		// Base de datos
-		DatabaseURL:     getEnv("DATABASE_URL", "whatsapp_sessions.db"),
-		DatabaseLogMode: databaseLogMode,
+		// Database
+		UserDB:     getEnv("USER_DB", ""),
+		PasswordDB: getEnv("PASSWORD_DB", ""),
+		ServerDB:   getEnv("SERVER_DB", ""),
+		Database:   getEnv("DATABASE", ""),
+		PortDB:     getEnv("PORT_DB", ""),
 
-		// WhatsApp
-		WhatsAppProvider: getEnv("WHATSAPP_PROVIDER", "whatsmeow"),
-		SessionTimeout:   sessionTimeout,
+		// Auth
+		JWTSecret:     getEnv("JWT_SECRET", ""),
+		JWTSalt:       getEnv("JWT_SALT", "10"),
+		JWTExpireTime: getEnvAsInt("JWT_TIEMPO_EXPIRA", 3600),
 
-		// Gmail
-		GmailEmail:       getEnv("GMAIL_EMAIL", ""),
-		GmailAppPassword: getEnv("GMAIL_APP_PASSWORD", ""),
-
-		// Webhooks
-		WebhookBaseURL: getEnv("WEBHOOK_BASE_URL", ""),
-	}, nil
+		// Redis
+		RedisTTL: getEnvAsInt("REDIS_TTL", 3600),
+		RedisURL: getEnv("REDIS_URL", "redis://localhost:6379"),
+	}
 }
 
+// getEnv obtiene variable de entorno con valor por defecto
 func getEnv(key, defaultValue string) string {
-	value := os.Getenv(key)
-	if value == "" {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return defaultValue
+}
+
+// getEnvAsInt obtiene variable de entorno como entero
+func getEnvAsInt(key string, defaultValue int) int {
+	strValue := os.Getenv(key)
+	if strValue == "" {
 		return defaultValue
 	}
+
+	value, err := strconv.Atoi(strValue)
+	if err != nil {
+		return defaultValue
+	}
+
 	return value
+}
+
+// IsDevelopment retorna true si el entorno es desarrollo
+func (c *Config) IsDevelopment() bool {
+	return c.Env == "Dev" || c.Env == "Development"
+}
+
+// IsProduction retorna true si el entorno es producción
+func (c *Config) IsProduction() bool {
+	return c.Env == "Production" || c.Env == "Prod"
 }
