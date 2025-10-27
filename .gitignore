@@ -10,3 +10,5 @@
 *.sqlite-wal
 *.pem
 conexion_whatsapp.go
+node_modules
+*lock*
