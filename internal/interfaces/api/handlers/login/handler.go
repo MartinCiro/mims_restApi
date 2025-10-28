@@ -25,13 +25,13 @@ func NewLoginHandler(loginService *login.LoginService) *LoginHandler {
 }
 
 type LoginRequestDTO struct {
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 func (dto *LoginRequestDTO) Validate() error {
-	if strings.TrimSpace(dto.Username) == "" {
-		return utils.ValidarBlank("username", "El nombre de usuario es obligatorio")
+	if strings.TrimSpace(dto.Email) == "" {
+		return utils.ValidarBlank("email", "El correo es obligatorio")
 	}
 	if strings.TrimSpace(dto.Password) == "" {
 		return utils.ValidarBlank("password", "La contraseña es obligatoria")
@@ -40,9 +40,6 @@ func (dto *LoginRequestDTO) Validate() error {
 }
 
 func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
-	fmt.Printf("🔍 Headers: %v\n", r.Header)
-	fmt.Printf("🔍 Content-Type: %s\n", r.Header.Get("Content-Type"))
-
 	// Leer el body completo para debug
 	bodyBytes, _ := io.ReadAll(r.Body)
 	fmt.Printf("🔍 Raw Body: %s\n", string(bodyBytes))
@@ -58,10 +55,6 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Printf("🔍 Request DTO después de decode: Username='%s', Password length=%d\n",
-		reqDTO.Username,
-		len(reqDTO.Password))
-
 	// Validar campos
 	if err := reqDTO.Validate(); err != nil {
 		fmt.Printf("❌ Validación falló: %v\n", err)
@@ -73,7 +66,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	credentials := login.LoginCredentials{
-		Username: strings.TrimSpace(reqDTO.Username),
+		Email:    reqDTO.Email,
 		Password: reqDTO.Password,
 	}
 
@@ -87,7 +80,7 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Adaptar resultado del dominio a respuesta HTTP
-	fmt.Printf("✅ Login exitoso para: %s\n", reqDTO.Username)
+	fmt.Printf("✅ Login exitoso para: %s\n", reqDTO.Email)
 	response := common.NewSuccessResponse(result)
 	common.WriteJSONResponse(w, response, 200)
 }

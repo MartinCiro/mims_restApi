@@ -30,8 +30,8 @@ func NewLoginService(authPort auth.AuthPort, jwtService *jwt.JWTService, redisSe
 }
 
 type LoginCredentials struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Email    string `json:"email"`
+	Password string `json:"passwd"`
 }
 
 // LoginResult es un objeto del dominio, NO una respuesta HTTP
@@ -47,11 +47,10 @@ type LoginResult struct {
 
 // Execute retorna objetos del dominio, NO estructuras HTTP
 func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials) (*LoginResult, error) {
-	fmt.Printf("🔍 Iniciando proceso de login para: %s\n", credentials.Username)
 
 	// 1. Validar credenciales con AuthPort
 	user, err := s.authPort.RetrieveUser(ctx, auth.AuthData{
-		Username: credentials.Username,
+		Username: credentials.Email,
 	})
 
 	if err != nil {
@@ -60,7 +59,7 @@ func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials
 	}
 
 	if user == nil {
-		fmt.Printf("❌ Usuario no encontrado: %s\n", credentials.Username)
+		fmt.Printf("❌ Usuario no encontrado: %s\n", credentials.Email)
 		return nil, fmt.Errorf("credenciales inválidas")
 	}
 
@@ -71,11 +70,11 @@ func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials
 	fmt.Printf("🔍 Comparación de contraseña: %t\n", passwordMatch)
 
 	if !passwordMatch {
-		fmt.Printf("❌ Contraseña incorrecta para: %s\n", credentials.Username)
+		fmt.Printf("❌ Contraseña incorrecta para: %s\n", credentials.Email)
 		return nil, fmt.Errorf("credenciales inválidas")
 	}
 
-	fmt.Printf("✅ Credenciales válidas para: %s\n", credentials.Username)
+	fmt.Printf("✅ Credenciales válidas para: %s\n", credentials.Email)
 
 	// 3. Generar token JWT
 	token, err := s.jwtService.GenerateJWT(jwt.UserInfo{

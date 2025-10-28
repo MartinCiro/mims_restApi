@@ -1,4 +1,3 @@
-// internal/infrastructure/repositories/usuario_repository.go
 package repositories
 
 import (
@@ -23,8 +22,7 @@ func NewUsuarioRepository(dbManager *database.DBManager) *UsuarioRepository {
 }
 
 // FindByUsername simula: prisma.usuario.findUnique({ where: { username } })
-func (r *UsuarioRepository) FindByUsername(ctx context.Context, username string) (*auth.User, error) {
-	fmt.Printf("🔍 Buscando usuario por nom_user: %s\n", username)
+func (r *UsuarioRepository) FindByUsername(ctx context.Context, email string) (*auth.User, error) {
 
 	// Estructura que coincide con la BD real
 	var usuarioDB struct {
@@ -32,19 +30,18 @@ func (r *UsuarioRepository) FindByUsername(ctx context.Context, username string)
 		Nombres   string `gorm:"column:nombres"`
 		Apellido  string `gorm:"column:apellido"`
 		Email     string `gorm:"column:email"`
-		NomUser   string `gorm:"column:nom_user"` // ← CORREGIDO
+		NomUser   string `gorm:"column:nom_user"`
 		Pass      string `gorm:"column:pass"`
 		IDRol     int    `gorm:"column:id_rol"`
 		EstadoID  int    `gorm:"column:estado_id"`
 	}
 
 	err := r.dbManager.FindUnique(ctx, "usuario", &usuarioDB, map[string]interface{}{
-		"nom_user": username, // ← CORREGIDO: usar nom_user en lugar de username
+		"email": email,
 	})
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			fmt.Printf("❌ Usuario no encontrado: %s\n", username)
 			return nil, nil
 		}
 		fmt.Printf("❌ Error buscando usuario: %v\n", err)

@@ -8,8 +8,8 @@ import (
 
 type Usuario struct {
 	ID                *int   `json:"id,omitempty"`
-	Username          string `json:"username"`
-	Email             string `json:"email,omitempty"` // Agregado para flexibilidad
+	Username          string `json:"username,omitempty"`
+	Email             string `json:"email"`
 	IDRol             *int   `json:"id_rol,omitempty"`
 	IDEstado          *int   `json:"id_estado,omitempty"`
 	encryptedPassword string
