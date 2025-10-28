@@ -10,7 +10,6 @@ import (
 	"api_go/internal/core/auth"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/infrastructure/redis"
-	"api_go/internal/interfaces/api/common"
 	"api_go/pkg/utils"
 )
 
@@ -30,37 +29,53 @@ func NewLoginService(authPort auth.AuthPort, jwtService *jwt.JWTService, redisSe
 	}
 }
 
-// LoginCredentials DTO específico para login
 type LoginCredentials struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
-// LoginResponse DTO específico para respuesta de login
-type LoginResponse struct {
+// LoginResult es un objeto del dominio, NO una respuesta HTTP
+type LoginResult struct {
 	Token   string `json:"token"`
 	Usuario struct {
-		ID       int    `json:"id"`
-		Nombre   string `json:"nombre"`
-		Rol      *int   `json:"rol"`
-		Permisos []int  `json:"permisos,omitempty"`
+		ID       int      `json:"id"`
+		Nombre   string   `json:"nombre"`
+		Rol      *int     `json:"rol"`
+		Permisos []string `json:"permisos,omitempty"`
 	} `json:"usuario"`
 }
 
-func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials) (*common.ResponseBody[LoginResponse], error) {
-	fmt.Printf("🔍 Executing login for user: %s\n", credentials.Username)
+// Execute retorna objetos del dominio, NO estructuras HTTP
+func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials) (*LoginResult, error) {
+	fmt.Printf("🔍 Iniciando proceso de login para: %s\n", credentials.Username)
+
 	// 1. Validar credenciales con AuthPort
 	user, err := s.authPort.RetrieveUser(ctx, auth.AuthData{
 		Username: credentials.Username,
 	})
+
 	if err != nil {
+		fmt.Printf("❌ Error en RetrieveUser: %v\n", err)
 		return nil, fmt.Errorf("credenciales inválidas")
 	}
 
-	// 2. Verificar contraseña
-	if !s.passwordService.ComparePasswords(credentials.Password, user.PasswordHash) {
+	if user == nil {
+		fmt.Printf("❌ Usuario no encontrado: %s\n", credentials.Username)
 		return nil, fmt.Errorf("credenciales inválidas")
 	}
+
+	fmt.Printf("✅ Usuario validado: ID=%d\n", user.ID)
+
+	// 2. Verificar contraseña
+	passwordMatch := s.passwordService.ComparePasswords(credentials.Password, user.PasswordHash)
+	fmt.Printf("🔍 Comparación de contraseña: %t\n", passwordMatch)
+
+	if !passwordMatch {
+		fmt.Printf("❌ Contraseña incorrecta para: %s\n", credentials.Username)
+		return nil, fmt.Errorf("credenciales inválidas")
+	}
+
+	fmt.Printf("✅ Credenciales válidas para: %s\n", credentials.Username)
 
 	// 3. Generar token JWT
 	token, err := s.jwtService.GenerateJWT(jwt.UserInfo{
@@ -72,7 +87,7 @@ func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials
 		return nil, fmt.Errorf("error generando token: %v", err)
 	}
 
-	// 4. Guardar en cache (si es necesario)
+	// 4. Guardar en cache
 	userCacheKey := fmt.Sprintf("user:%d", user.ID)
 	userData := map[string]interface{}{
 		"id_user":  user.ID,
@@ -84,24 +99,21 @@ func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials
 	userDataJSON, _ := json.Marshal(userData)
 	s.redisService.Set(ctx, userCacheKey, string(userDataJSON), 24*time.Hour)
 
-	// 5. Construir respuesta
-	responseData := LoginResponse{
+	// 5. Construir resultado del dominio
+	result := &LoginResult{
 		Token: token,
 		Usuario: struct {
-			ID       int    `json:"id"`
-			Nombre   string `json:"nombre"`
-			Rol      *int   `json:"rol"`
-			Permisos []int  `json:"permisos,omitempty"`
+			ID       int      `json:"id"`
+			Nombre   string   `json:"nombre"`
+			Rol      *int     `json:"rol"`
+			Permisos []string `json:"permisos,omitempty"`
 		}{
-			ID:     user.ID,
-			Nombre: user.Username,
-			Rol:    user.IDRol,
+			ID:       user.ID,
+			Nombre:   user.Username,
+			Rol:      user.IDRol,
+			Permisos: user.Permisos,
 		},
 	}
 
-	return &common.ResponseBody[LoginResponse]{
-		Success: true,
-		Code:    200,
-		Data:    responseData,
-	}, nil
+	return result, nil
 }

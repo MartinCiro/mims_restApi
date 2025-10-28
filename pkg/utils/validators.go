@@ -2,10 +2,31 @@ package utils
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"api_go/internal/interfaces/api/common"
 )
+
+type ValidationError struct {
+	Field   string `json:"field"`
+	Message string `json:"message"`
+}
+
+func (v ValidationError) Error() string {
+	return fmt.Sprintf("%s: %s", v.Field, v.Message)
+}
+
+type ValidationErrors struct {
+	Errors []ValidationError `json:"errors"`
+}
+
+func (v ValidationErrors) Error() string {
+	if len(v.Errors) > 0 {
+		return v.Errors[0].Error()
+	}
+	return "Errores de validación"
+}
 
 // ValidarBlank valida que un valor no esté vacío
 func ValidarBlank(valor interface{}, nombre string) error {
@@ -74,9 +95,36 @@ func ValidarNoExistente(valor string, nombre interface{}) ValidacionNoExistenteR
 }
 
 // HandleException maneja excepciones y las convierte en respuestas HTTP
-func HandleException(err error) (common.ResponseBody[interface{}], int) {
+func HandleException(err error) (common.ResponseBody[string], int) {
+	// Si el error es de validación
+	switch vErr := err.(type) {
+	case ValidationError:
+		fmt.Printf("❌ Error de validación: %v\n", vErr)
+		return common.NewErrorResponse(400, vErr.Error()), 400
+	case ValidationErrors:
+		fmt.Printf("❌ Errores de validación múltiples: %d errores\n", len(vErr.Errors))
+		// Para múltiples errores, retornar el primer error
+		if len(vErr.Errors) > 0 {
+			return common.NewErrorResponse(400, vErr.Errors[0].Error()), 400
+		}
+		return common.NewErrorResponse(400, "Errores de validación"), 400
+	}
+
+	// Manejar errores de base de datos
+	errStr := err.Error()
+	if strings.Contains(errStr, "status_cod:") {
+		// Extraer código y mensaje del error
+		parts := strings.Split(errStr, ", data:")
+		if len(parts) == 2 {
+			statusPart := strings.TrimPrefix(parts[0], "status_cod:")
+			statusCode, _ := strconv.Atoi(strings.TrimSpace(statusPart))
+			message := strings.TrimSpace(parts[1])
+			return common.NewErrorResponse(statusCode, message), statusCode
+		}
+	}
+
 	// Error genérico
-	fmt.Printf("Error interno: %v\n", err)
+	fmt.Printf("❌ Error interno: %v\n", err)
 	return common.NewErrorResponse(500, "Error interno del servidor"), 500
 }
 

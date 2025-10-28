@@ -1,3 +1,4 @@
+// internal/interfaces/api/common/responses.go
 package common
 
 import (
@@ -5,14 +6,13 @@ import (
 	"net/http"
 )
 
-// ResponseBody representa la estructura estándar de respuesta
+// ResponseBody es un CONCERN HTTP, vive solo en interfaces
 type ResponseBody[T any] struct {
 	Success bool `json:"ok"`
 	Code    int  `json:"statusCode"`
 	Data    T    `json:"result"`
 }
 
-// NewResponseBody crea una nueva respuesta
 func NewResponseBody[T any](success bool, code int, data T) ResponseBody[T] {
 	return ResponseBody[T]{
 		Success: success,
@@ -21,7 +21,6 @@ func NewResponseBody[T any](success bool, code int, data T) ResponseBody[T] {
 	}
 }
 
-// NewSuccessResponse crea una respuesta exitosa
 func NewSuccessResponse[T any](data T) ResponseBody[T] {
 	return ResponseBody[T]{
 		Success: true,
@@ -30,16 +29,14 @@ func NewSuccessResponse[T any](data T) ResponseBody[T] {
 	}
 }
 
-// NewErrorResponse crea una respuesta de error
-func NewErrorResponse(code int, message string) ResponseBody[interface{}] {
-	return ResponseBody[interface{}]{
+func NewErrorResponse(code int, message string) ResponseBody[string] {
+	return ResponseBody[string]{
 		Success: false,
 		Code:    code,
-		Data:    nil,
+		Data:    message,
 	}
 }
 
-// WriteJSONResponse escribe una respuesta JSON estandarizada
 func WriteJSONResponse(w http.ResponseWriter, response interface{}, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)

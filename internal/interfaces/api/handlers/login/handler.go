@@ -1,7 +1,11 @@
+// internal/interfaces/api/handlers/login/handler.go
 package login
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 
@@ -20,7 +24,6 @@ func NewLoginHandler(loginService *login.LoginService) *LoginHandler {
 	}
 }
 
-// LoginRequestDTO específico para el handler
 type LoginRequestDTO struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
@@ -37,23 +40,36 @@ func (dto *LoginRequestDTO) Validate() error {
 }
 
 func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		response := common.NewErrorResponse(405, "Método no permitido")
-		common.WriteJSONResponse(w, response, 405)
-		return
-	}
+	fmt.Printf("🔍 Headers: %v\n", r.Header)
+	fmt.Printf("🔍 Content-Type: %s\n", r.Header.Get("Content-Type"))
+
+	// Leer el body completo para debug
+	bodyBytes, _ := io.ReadAll(r.Body)
+	fmt.Printf("🔍 Raw Body: %s\n", string(bodyBytes))
+
+	// Resetear el body
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 
 	var reqDTO LoginRequestDTO
 	if err := json.NewDecoder(r.Body).Decode(&reqDTO); err != nil {
-		response := common.NewErrorResponse(400, "Solicitud JSON inválida")
+		fmt.Printf("❌ Error decoding JSON: %v\n", err)
+		response := common.NewErrorResponse(400, "Solicitud JSON inválida: "+err.Error())
 		common.WriteJSONResponse(w, response, 400)
 		return
 	}
 
+	fmt.Printf("🔍 Request DTO después de decode: Username='%s', Password length=%d\n",
+		reqDTO.Username,
+		len(reqDTO.Password))
+
+	// Validar campos
 	if err := reqDTO.Validate(); err != nil {
+		fmt.Printf("❌ Validación falló: %v\n", err)
 		utils.WriteValidationError(w, err, 400)
 		return
 	}
+
+	fmt.Printf("✅ JSON válido, procediendo con login...\n")
 
 	ctx := r.Context()
 	credentials := login.LoginCredentials{
@@ -61,12 +77,17 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		Password: reqDTO.Password,
 	}
 
-	response, err := h.loginService.Execute(ctx, credentials)
+	// Ejecutar servicio del core (retorna objeto del dominio)
+	result, err := h.loginService.Execute(ctx, credentials)
 	if err != nil {
+		fmt.Printf("❌ Error en login service: %v\n", err)
 		errorResponse := common.NewErrorResponse(401, err.Error())
 		common.WriteJSONResponse(w, errorResponse, 401)
 		return
 	}
 
-	common.WriteJSONResponse(w, *response, 200)
+	// Adaptar resultado del dominio a respuesta HTTP
+	fmt.Printf("✅ Login exitoso para: %s\n", reqDTO.Username)
+	response := common.NewSuccessResponse(result)
+	common.WriteJSONResponse(w, response, 200)
 }
