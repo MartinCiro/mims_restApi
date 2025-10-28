@@ -10,9 +10,9 @@ import (
 	"api_go/config"
 	"api_go/internal/app"
 	"api_go/internal/interfaces/api/common"
-	"api_go/internal/interfaces/api/handlers/auth"
 	common_handler "api_go/internal/interfaces/api/handlers/common"
 	"api_go/internal/interfaces/api/handlers/estados"
+	"api_go/internal/interfaces/api/handlers/login"
 	"api_go/internal/interfaces/api/middlewares"
 )
 
@@ -54,8 +54,14 @@ func setupPublicRoutes(mux *http.ServeMux, app *app.App) {
 	mux.HandleFunc("GET /ready", common_handler.ReadyHandler(app.DB, app.RedisCache))
 
 	// Autenticación (pública)
-	authHandler := auth.NewAuthHandler(app.AuthService)
-	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
+	// Login (público) - handler específico
+	loginHandler := login.NewLoginHandler(app.LoginService)
+	mux.HandleFunc("POST /api/auth/login", loginHandler.Login)
+
+	// Otras rutas públicas de auth
+	//authHandler := auth.NewAuthHandler(app.AuthService)
+	/* mux.HandleFunc("POST /api/auth/refresh", authHandler.RefreshToken)
+	mux.HandleFunc("POST /api/auth/validate", authHandler.ValidateToken) */
 }
 
 // setupAPIRoutes configura rutas protegidas de la API

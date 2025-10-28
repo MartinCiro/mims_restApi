@@ -38,7 +38,7 @@ func main() {
 	// Iniciar servidor en goroutine
 	go func() {
 		log.Printf("🚀 Server is running on http://localhost:%s", cfg.Port)
-		log.Printf("📝 Environment: %s", cfg.Env)
+		/* log.Printf("📝 Environment: %s", cfg.Env) */
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("❌ Error iniciando servidor: %v", err)

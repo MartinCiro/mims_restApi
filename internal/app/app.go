@@ -13,6 +13,7 @@ import (
 	"api_go/infrastructure/database/models"
 	"api_go/internal/core/auth"
 	"api_go/internal/core/estados"
+	"api_go/internal/core/login"
 	"api_go/internal/infrastructure/database"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/infrastructure/redis"
@@ -35,6 +36,8 @@ type App struct {
 
 	// Servicios de Utilidad
 	PasswordService *utils.PasswordService
+
+	LoginService *login.LoginService
 }
 
 func NewApp() *App {
@@ -61,7 +64,7 @@ func (a *App) Initialize(cfg *config.Config) error {
 		}
 	}
 
-	log.Println("✅ Todos los servicios inicializados correctamente")
+	/* log.Println("✅ Todos los servicios inicializados correctamente") */
 	return nil
 }
 
@@ -109,7 +112,6 @@ func (a *App) initializeDatabase() (*gorm.DB, error) {
 		return nil, fmt.Errorf("error en health check de BD: %v", err)
 	}
 
-	log.Println("✅ Base de datos conectada correctamente")
 	return db, nil
 }
 
@@ -146,14 +148,21 @@ func (a *App) initializeServices() error {
 	// Inicializar adaptadores
 	authAdapter := repositories.NewAuthAdapter(a.DB)
 	estadosAdapter := repositories.NewEstadosAdapter(a.DB, a.RedisCache)
-	// Inicializar servicios del core
-	a.AuthService = auth.NewAuthService(
-		authAdapter,
-		a.RedisCache,
+
+	// Inicializar servicios del core CON SEPARACIÓN DE RESPONSABILIDADES
+
+	// 1. AuthService - solo operaciones generales de autenticación
+	a.AuthService = auth.NewAuthService(authAdapter)
+
+	// 2. LoginService - caso de uso específico de login
+	a.LoginService = login.NewLoginService(
+		authAdapter, // Implementa AuthPort para validar credenciales
 		a.JWTService,
+		a.RedisCache,
 		a.PasswordService,
 	)
 
+	// 3. EstadoService - gestión de estados
 	a.EstadoService = estados.NewEstadoService(estadosAdapter)
 
 	log.Println("✅ Servicios del core inicializados correctamente")

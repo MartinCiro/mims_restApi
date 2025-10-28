@@ -2,7 +2,6 @@ package database
 
 import (
 	"fmt"
-	"log"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -49,17 +48,8 @@ func GetConnection(config DBConfig) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(5)
 	sqlDB.SetConnMaxLifetime(5 * 60) // 5 minutos
 
-	log.Println("✅ Conexión a la base de datos establecida correctamente")
 	return db, nil
 }
-
-/* // getEnv obtiene variable de entorno con valor por defecto
-func getEnv(key, defaultValue string) string {
-	value := defaultValue
-	// En una implementación real, usarías os.Getenv(key)
-	// Por ahora retornamos el valor por defecto
-	return value
-} */
 
 // HealthCheck verifica que la conexión a la BD esté funcionando
 func HealthCheck(db *gorm.DB) error {

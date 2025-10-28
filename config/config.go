@@ -36,9 +36,9 @@ func Load() *Config {
 	err := godotenv.Load()
 	if err != nil {
 		log.Printf("⚠️  No se pudo cargar el archivo .env: %v", err)
-	} else {
+	} /* else {
 		log.Println("✅ Archivo .env cargado correctamente")
-	}
+	} */
 
 	return &Config{
 		// Server Config

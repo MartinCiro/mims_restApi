@@ -21,17 +21,9 @@ type AuthService struct {
 	passwordService *utils.PasswordService
 }
 
-func NewAuthService(
-	authPort AuthPort,
-	redisService *redis.Cache,
-	jwtService *jwt.JWTService,
-	passwordService *utils.PasswordService,
-) *AuthService {
+func NewAuthService(authPort AuthPort) *AuthService {
 	return &AuthService{
-		authPort:        authPort,
-		redisService:    redisService,
-		jwtService:      jwtService,
-		passwordService: passwordService,
+		authPort: authPort,
 	}
 }
 
