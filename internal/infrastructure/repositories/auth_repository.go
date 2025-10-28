@@ -40,8 +40,6 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 		return nil, nil
 	}
 
-	fmt.Printf("✅ Usuario base encontrado: ID=%d\n", usuario.ID)
-
 	// 2. Buscar permisos (si tiene rol)
 	if usuario.IDRol != nil {
 		permisos, err := a.permisoRepo.FindByRolID(ctx, *usuario.IDRol)
@@ -65,6 +63,5 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 		}
 	}
 
-	fmt.Printf("✅ Usuario completo recuperado: %s\n", usuario.Username)
 	return usuario, nil
 }

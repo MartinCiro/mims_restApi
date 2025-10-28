@@ -63,18 +63,13 @@ func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials
 		return nil, fmt.Errorf("credenciales inválidas")
 	}
 
-	fmt.Printf("✅ Usuario validado: ID=%d\n", user.ID)
-
 	// 2. Verificar contraseña
 	passwordMatch := s.passwordService.ComparePasswords(credentials.Password, user.PasswordHash)
-	fmt.Printf("🔍 Comparación de contraseña: %t\n", passwordMatch)
 
 	if !passwordMatch {
 		fmt.Printf("❌ Contraseña incorrecta para: %s\n", credentials.Email)
 		return nil, fmt.Errorf("credenciales inválidas")
 	}
-
-	fmt.Printf("✅ Credenciales válidas para: %s\n", credentials.Email)
 
 	// 3. Generar token JWT
 	token, err := s.jwtService.GenerateJWT(jwt.UserInfo{

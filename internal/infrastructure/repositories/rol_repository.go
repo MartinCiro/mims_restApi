@@ -41,7 +41,6 @@ func (r *RolRepository) FindByID(ctx context.Context, id int) (*Rol, error) {
 		return nil, fmt.Errorf("error buscando rol: %v", err)
 	}
 
-	fmt.Printf("✅ Rol encontrado: %s\n", rolDB.Nombre)
 	return &Rol{
 		ID:     rolDB.ID,
 		Nombre: rolDB.Nombre,
@@ -50,5 +49,5 @@ func (r *RolRepository) FindByID(ctx context.Context, id int) (*Rol, error) {
 
 type Rol struct {
 	ID     int    `json:"id"`
-	Nombre string `json:"nombre"`
+	Nombre string `json:"nombre_rol"`
 }
