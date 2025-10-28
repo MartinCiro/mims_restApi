@@ -48,6 +48,7 @@ type LoginResponse struct {
 }
 
 func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials) (*common.ResponseBody[LoginResponse], error) {
+	fmt.Printf("🔍 Executing login for user: %s\n", credentials.Username)
 	// 1. Validar credenciales con AuthPort
 	user, err := s.authPort.RetrieveUser(ctx, auth.AuthData{
 		Username: credentials.Username,

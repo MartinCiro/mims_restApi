@@ -141,29 +141,22 @@ func (a *App) initializeJWTService() *jwt.JWTService {
 	)
 }
 
+// internal/app/app.go
 func (a *App) initializeServices() error {
-	// Inicializar servicios de utilidad
-	a.PasswordService = utils.NewPasswordService(a.Config.JWTSalt)
+	// Inicializar DB Manager (simulador Prisma)
+	dbManager := database.NewDBManager(a.DB)
 
-	// Inicializar adaptadores
-	authAdapter := repositories.NewAuthAdapter(a.DB)
-	estadosAdapter := repositories.NewEstadosAdapter(a.DB, a.RedisCache)
+	// Inicializar repositorios separados
+	usuarioRepo := repositories.NewUsuarioRepository(dbManager)
+	rolRepo := repositories.NewRolRepository(dbManager)
+	permisoRepo := repositories.NewPermisoRepository(dbManager)
 
-	// Inicializar servicios del core CON SEPARACIÓN DE RESPONSABILIDADES
+	// AuthAdapter coordina los repositorios
+	authAdapter := repositories.NewAuthAdapter(usuarioRepo, rolRepo, permisoRepo)
 
-	// 1. AuthService - solo operaciones generales de autenticación
+	// Inicializar servicios
 	a.AuthService = auth.NewAuthService(authAdapter)
-
-	// 2. LoginService - caso de uso específico de login
-	a.LoginService = login.NewLoginService(
-		authAdapter, // Implementa AuthPort para validar credenciales
-		a.JWTService,
-		a.RedisCache,
-		a.PasswordService,
-	)
-
-	// 3. EstadoService - gestión de estados
-	a.EstadoService = estados.NewEstadoService(estadosAdapter)
+	a.LoginService = login.NewLoginService(authAdapter, a.JWTService, a.RedisCache, a.PasswordService)
 
 	log.Println("✅ Servicios del core inicializados correctamente")
 	return nil
