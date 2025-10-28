@@ -53,7 +53,7 @@ func Load() *Config {
 		PortDB:     getEnv("PORT_DB", "5432"), // Valor por defecto
 
 		// Auth
-		JWTSecret:     getEnv("JWT_SECRET", ""),
+		JWTSecret:     getEnv("JWT_SECRETO", ""),
 		JWTSalt:       getEnv("JWT_SALT", "10"),
 		JWTExpireTime: getEnvAsInt("JWT_TIEMPO_EXPIRA", 3600),
 

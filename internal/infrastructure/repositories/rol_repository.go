@@ -5,6 +5,8 @@ import (
 	"api_go/internal/infrastructure/database"
 	"context"
 	"fmt"
+
+	"gorm.io/gorm"
 )
 
 type RolRepository struct {
@@ -19,19 +21,27 @@ func NewRolRepository(dbManager *database.DBManager) *RolRepository {
 
 // FindByID simula: prisma.rol.findUnique({ where: { id } })
 func (r *RolRepository) FindByID(ctx context.Context, id int) (*Rol, error) {
+	fmt.Printf("🔍 Buscando rol: %d\n", id)
+
 	var rolDB struct {
 		ID     int    `gorm:"column:id"`
-		Nombre string `gorm:"column:nombre"`
+		Nombre string `gorm:"column:nombre_rol"`
 	}
 
-	err := r.dbManager.FindUnique(ctx, &rolDB, map[string]interface{}{
+	err := r.dbManager.FindUnique(ctx, "rol", &rolDB, map[string]interface{}{
 		"id": id,
 	})
 
 	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			fmt.Printf("❌ Rol no encontrado: %d\n", id)
+			return nil, nil
+		}
+		fmt.Printf("❌ Error buscando rol: %v\n", err)
 		return nil, fmt.Errorf("error buscando rol: %v", err)
 	}
 
+	fmt.Printf("✅ Rol encontrado: %s\n", rolDB.Nombre)
 	return &Rol{
 		ID:     rolDB.ID,
 		Nombre: rolDB.Nombre,

@@ -135,6 +135,11 @@ func (a *App) initializeRedis() *redis.Cache {
 }
 
 func (a *App) initializeJWTService() *jwt.JWTService {
+	if a.Config.JWTSecret == "" {
+		log.Printf("⚠️  ADVERTENCIA: JWTSecret está vacío en la configuración")
+	} else {
+		log.Printf("✅ JWTSecret cargado correctamente (longitud: %d)", len(a.Config.JWTSecret))
+	}
 	return jwt.NewJWTService(
 		a.Config.JWTSecret,
 		a.Config.Env,
@@ -143,7 +148,10 @@ func (a *App) initializeJWTService() *jwt.JWTService {
 
 // internal/app/app.go
 func (a *App) initializeServices() error {
-	// Inicializar DB Manager (simulador Prisma)
+	// Inicializar servicios de utilidad
+	a.PasswordService = utils.NewPasswordService(a.Config.JWTSalt)
+
+	// Inicializar DB Manager corregido
 	dbManager := database.NewDBManager(a.DB)
 
 	// Inicializar repositorios separados
@@ -154,9 +162,18 @@ func (a *App) initializeServices() error {
 	// AuthAdapter coordina los repositorios
 	authAdapter := repositories.NewAuthAdapter(usuarioRepo, rolRepo, permisoRepo)
 
-	// Inicializar servicios
+	// Inicializar servicios del core
 	a.AuthService = auth.NewAuthService(authAdapter)
-	a.LoginService = login.NewLoginService(authAdapter, a.JWTService, a.RedisCache, a.PasswordService)
+	a.LoginService = login.NewLoginService(
+		authAdapter,
+		a.JWTService,
+		a.RedisCache,
+		a.PasswordService,
+	)
+
+	// Servicio de estados
+	estadosAdapter := repositories.NewEstadosAdapter(a.DB, a.RedisCache)
+	a.EstadoService = estados.NewEstadoService(estadosAdapter)
 
 	log.Println("✅ Servicios del core inicializados correctamente")
 	return nil

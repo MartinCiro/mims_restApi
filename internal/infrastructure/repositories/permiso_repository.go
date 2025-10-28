@@ -19,15 +19,23 @@ func NewPermisoRepository(dbManager *database.DBManager) *PermisoRepository {
 
 // FindByRolID simula: prisma.permiso.findMany({ where: { rol_x_permiso: { id_rol } } })
 func (r *PermisoRepository) FindByRolID(ctx context.Context, rolID int) ([]string, error) {
+	fmt.Printf("🔍 Buscando permisos para rol: %d\n", rolID)
+
 	var permisosDB []struct {
-		Nombre string `gorm:"column:nombre"`
+		Nombre string `gorm:"column:nombre_permiso"`
 	}
 
-	err := r.dbManager.FindMany(ctx, &permisosDB, map[string]interface{}{
-		"rol_x_permiso.id_rol": rolID,
-	}, database.WithSelect{Fields: []string{"permiso.nombre"}})
+	// Usar join explícito
+	query := `
+		SELECT permiso.nombre 
+		FROM permiso 
+		INNER JOIN rol_x_permiso ON permiso.id = rol_x_permiso.id_permiso 
+		WHERE rol_x_permiso.id_rol = ?
+	`
 
+	err := r.dbManager.FindWithJoin(ctx, &permisosDB, query, rolID)
 	if err != nil {
+		fmt.Printf("❌ Error buscando permisos: %v\n", err)
 		return nil, fmt.Errorf("error buscando permisos: %v", err)
 	}
 
@@ -36,5 +44,6 @@ func (r *PermisoRepository) FindByRolID(ctx context.Context, rolID int) ([]strin
 		permisos[i] = p.Nombre
 	}
 
+	fmt.Printf("✅ Permisos encontrados: %d\n", len(permisos))
 	return permisos, nil
 }

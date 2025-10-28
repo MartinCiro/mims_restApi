@@ -19,30 +19,25 @@ func NewDBManager(db *gorm.DB) *DBManager {
 }
 
 // FindUnique simula prisma.findUnique()
-func (dm *DBManager) FindUnique(ctx context.Context, model interface{}, where map[string]interface{}) error {
-	query := dm.db.WithContext(ctx).Model(model)
+func (dm *DBManager) FindUnique(ctx context.Context, table string, result interface{}, where map[string]interface{}) error {
+	query := dm.db.WithContext(ctx).Table(table)
 
 	for field, value := range where {
 		query = query.Where(fmt.Sprintf("%s = ?", field), value)
 	}
 
-	return query.First(model).Error
+	return query.First(result).Error
 }
 
 // FindMany simula prisma.findMany()
-func (dm *DBManager) FindMany(ctx context.Context, models interface{}, where map[string]interface{}, options ...QueryOption) error {
-	query := dm.db.WithContext(ctx).Model(models)
+func (dm *DBManager) FindMany(ctx context.Context, table string, results interface{}, where map[string]interface{}) error {
+	query := dm.db.WithContext(ctx).Table(table)
 
 	for field, value := range where {
 		query = query.Where(fmt.Sprintf("%s = ?", field), value)
 	}
 
-	// Aplicar opciones
-	for _, option := range options {
-		query = option.Apply(query)
-	}
-
-	return query.Find(models).Error
+	return query.Find(results).Error
 }
 
 // Create simula prisma.create()
@@ -90,6 +85,10 @@ func (dm *DBManager) Include(ctx context.Context, model interface{}, where map[s
 	}
 
 	return query.First(model).Error
+}
+
+func (dm *DBManager) FindWithJoin(ctx context.Context, results interface{}, query string, args ...interface{}) error {
+	return dm.db.WithContext(ctx).Raw(query, args...).Scan(results).Error
 }
 
 // QueryOptions para operaciones avanzadas
