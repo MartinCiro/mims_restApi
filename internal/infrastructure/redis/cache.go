@@ -1,6 +1,7 @@
 package redis
 
 import (
+	"api_go/config"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -12,27 +13,40 @@ import (
 type Cache struct {
 	client *redis.Client
 	ttl    time.Duration
+	config *config.Config
 }
 
-func NewCache(addr, password string, db int) *Cache {
-	client := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
-		DB:       db,
-	})
+func NewCache(config *config.Config) *Cache {
+	// Parsear la URL de Redis (puedes mejorar esto según tus necesidades)
+	// Asumiendo que RedisURL es algo como "redis://localhost:6379"
+	opts, err := redis.ParseURL(config.RedisURL)
+	if err != nil {
+		// Fallback a configuración por defecto si hay error
+		opts = &redis.Options{
+			Addr:     "localhost:6379",
+			Password: "",
+			DB:       0,
+		}
+	}
 
-	// TTL por defecto: 1 hora (3600 segundos)
-	defaultTTL := 3600 * time.Second
+	client := redis.NewClient(opts)
+
+	// Usar RedisTTL de la configuración (en segundos)
+	ttl := time.Duration(config.RedisTTL) * time.Second
 
 	return &Cache{
 		client: client,
-		ttl:    defaultTTL,
+		ttl:    ttl,
+		config: config,
 	}
 }
 
 // NewCacheWithConfig crea una instancia con configuración personalizada
 func NewCacheWithConfig(addr, password string, db int, ttlSeconds int) *Cache {
-	cache := NewCache(addr, password, db)
+	cache := NewCache(&config.Config{
+		RedisURL: fmt.Sprintf("redis://%s", addr),
+		RedisTTL: ttlSeconds,
+	})
 	cache.ttl = time.Duration(ttlSeconds) * time.Second
 	return cache
 }

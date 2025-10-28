@@ -1,14 +1,31 @@
 package redis
 
 import (
+	"api_go/config"
 	"context"
 	"log"
-	"strconv"
 )
 
-// InitializeCache inicializa y retorna el servicio de Redis
-func InitializeCache(host, password string, db int) *Cache {
-	cache := NewCache(host, password, db)
+// InitializeCache inicializa y retorna el servicio de Redis con configuración
+func InitializeCache(cfg *config.Config) *Cache {
+	return InitializeCacheWithOptions(cfg, "")
+}
+
+// InitializeCacheWithOptions inicializa Redis con configuración y opciones adicionales
+func InitializeCacheWithOptions(cfg *config.Config, customURL string) *Cache {
+	var cache *Cache
+
+	if customURL != "" {
+		// Usar URL personalizada (override)
+		tempCfg := &config.Config{
+			RedisURL: customURL,
+			RedisTTL: cfg.RedisTTL, // Mantener el TTL de la configuración principal
+		}
+		cache = NewCache(tempCfg)
+	} else {
+		// Usar configuración normal
+		cache = NewCache(cfg)
+	}
 
 	// Verificar conexión
 	ctx := context.Background()
@@ -17,27 +34,8 @@ func InitializeCache(host, password string, db int) *Cache {
 		log.Printf("⚠️  La aplicación funcionará sin cache de Redis")
 		// No hacemos fatal para que la app pueda funcionar sin Redis
 	} else {
-		log.Println("✅ Conexión a Redis establecida correctamente")
+		log.Printf("✅ Conexión a Redis establecida correctamente (TTL: %d segundos)", cfg.RedisTTL)
 	}
 
 	return cache
-}
-
-// InitializeCacheFromEnv inicializa Redis desde variables de entorno
-func InitializeCacheFromEnv() *Cache {
-	host := getEnv("REDIS_HOST", "localhost")
-	port := getEnv("REDIS_PORT", "6379")
-	password := getEnv("REDIS_PASSWORD", "")
-	db, _ := strconv.Atoi(getEnv("REDIS_DB", "0"))
-
-	addr := host + ":" + port
-
-	return InitializeCache(addr, password, db)
-}
-
-// getEnv obtiene variable de entorno con valor por defecto
-func getEnv(key, defaultValue string) string {
-	// En implementación real usarías os.Getenv(key)
-	// Por simplicidad retornamos el valor por defecto
-	return defaultValue
 }

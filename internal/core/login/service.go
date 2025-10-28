@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"api_go/config"
 	"api_go/internal/core/auth"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/infrastructure/redis"
@@ -18,10 +19,18 @@ type LoginService struct {
 	jwtService      *jwt.JWTService
 	redisService    *redis.Cache
 	passwordService *utils.PasswordService
+	config          *config.Config
 }
 
-func NewLoginService(authPort auth.AuthPort, jwtService *jwt.JWTService, redisService *redis.Cache, passwordService *utils.PasswordService) *LoginService {
+func NewLoginService(
+	authPort auth.AuthPort,
+	jwtService *jwt.JWTService,
+	redisService *redis.Cache,
+	passwordService *utils.PasswordService,
+	config *config.Config,
+) *LoginService {
 	return &LoginService{
+		config:          config,
 		authPort:        authPort,
 		jwtService:      jwtService,
 		redisService:    redisService,
@@ -36,13 +45,9 @@ type LoginCredentials struct {
 
 // LoginResult es un objeto del dominio, NO una respuesta HTTP
 type LoginResult struct {
-	Token   string `json:"token"`
-	Usuario struct {
-		ID       int      `json:"id"`
-		Nombre   string   `json:"nombre"`
-		Rol      *int     `json:"rol"`
-		Permisos []string `json:"permisos,omitempty"`
-	} `json:"usuario"`
+	Token     string `json:"token"`
+	TokenType string `json:"token_type"`
+	ExpiresIn int    `json:"expires_in"`
 }
 
 // Execute retorna objetos del dominio, NO estructuras HTTP
@@ -94,20 +99,9 @@ func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials
 	s.redisService.Set(ctx, userCacheKey, string(userDataJSON), 24*time.Hour)
 
 	// 5. Construir resultado del dominio
-	result := &LoginResult{
-		Token: token,
-		Usuario: struct {
-			ID       int      `json:"id"`
-			Nombre   string   `json:"nombre"`
-			Rol      *int     `json:"rol"`
-			Permisos []string `json:"permisos,omitempty"`
-		}{
-			ID:       user.ID,
-			Nombre:   user.Username,
-			Rol:      user.IDRol,
-			Permisos: user.Permisos,
-		},
-	}
-
-	return result, nil
+	return &LoginResult{
+		Token:     token,
+		TokenType: "Bearer",
+		ExpiresIn: s.config.JWTExpireTime, // En segundos
+	}, nil
 }

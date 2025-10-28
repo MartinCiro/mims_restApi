@@ -73,7 +73,6 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.
 		err = json.Unmarshal([]byte(cachedUser), &userData)
 		if err != nil {
 			log.Printf("Error parsing cached user data: %v", err)
-			// Continuar para regenerar cache
 		}
 	}
 

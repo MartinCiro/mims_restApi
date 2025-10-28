@@ -116,20 +116,22 @@ func (a *App) initializeDatabase() (*gorm.DB, error) {
 }
 
 func (a *App) initializeRedis() *redis.Cache {
-	// Extraer host y puerto de REDIS_URL si está disponible
-	var redisHost, redisPort string
-	if a.Config.RedisURL != "" {
-		// Parsear REDIS_URL (formato: redis://:pass@host:port)
-		redisHost = "localhost"
-		redisPort = "6379"
-		// En una implementación real, parsearías la URL correctamente
-	} else {
-		redisHost = "localhost"
-		redisPort = "6379"
+	// Validar que la configuración de Redis esté presente
+	if a.Config.RedisURL == "" {
+		log.Printf("⚠️  REDIS_URL no configurada, usando valores por defecto")
+		// Puedes setear valores por defecto temporalmente si es necesario
+		a.Config.RedisURL = "redis://localhost:6379"
 	}
 
-	addr := redisHost + ":" + redisPort
-	cache := redis.InitializeCache(addr, "", 0) // password vacía, DB 0
+	if a.Config.RedisTTL == 0 {
+		log.Printf("⚠️  REDIS_TTL no configurado, usando valor por defecto: 3600")
+		a.Config.RedisTTL = 3600
+	}
+
+	cache := redis.InitializeCache(a.Config)
+
+	log.Printf("🔧 Redis configurado - URL: %s, TTL: %d segundos",
+		a.Config.RedisURL, a.Config.RedisTTL)
 
 	return cache
 }
@@ -169,6 +171,7 @@ func (a *App) initializeServices() error {
 		a.JWTService,
 		a.RedisCache,
 		a.PasswordService,
+		a.Config,
 	)
 
 	// Servicio de estados
@@ -184,7 +187,12 @@ func (a *App) runMigrations() error {
 
 	// Ejecutar migraciones de GORM
 	if err := a.DB.AutoMigrate(
-		&models.Session{},
+		&models.Migration{},
+		&models.Estado{},
+		&models.Rol{},
+		&models.Permiso{},
+		&models.RolXPermiso{},
+		&models.Usuario{},
 		// Agregar otros modelos aquí
 	); err != nil {
 		return fmt.Errorf("error en migraciones automáticas: %v", err)
