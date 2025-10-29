@@ -41,6 +41,14 @@ type LoginResponse struct {
 	} `json:"usuario"`
 }
 
+// UserCacheData representa los datos del usuario en cache
+type UserCacheData struct {
+	IDUser   int      `json:"id_user"`
+	Nombre   string   `json:"nombre"`
+	IDRol    *int     `json:"id_rol"`
+	Permisos []string `json:"permisos,omitempty"`
+}
+
 func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.ResponseBody[LoginResponse], error) {
 	// Obtener usuario del puerto de autenticación
 	usuarioRetrieved, err := s.authPort.RetrieveUser(ctx, AuthData{Username: req.Username})
@@ -139,12 +147,4 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.
 		Code:    200,
 		Data:    responseData,
 	}, nil
-}
-
-// UserCacheData representa los datos del usuario en cache
-type UserCacheData struct {
-	IDUser   int      `json:"id_user"`
-	Nombre   string   `json:"nombre"`
-	IDRol    *int     `json:"id_rol"`
-	Permisos []string `json:"permisos,omitempty"`
 }

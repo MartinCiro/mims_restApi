@@ -1,4 +1,3 @@
-// internal/interfaces/api/routes/routes.go
 package routes
 
 import (
