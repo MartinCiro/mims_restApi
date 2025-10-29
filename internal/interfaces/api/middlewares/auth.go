@@ -64,7 +64,7 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 		}
 
 		// ✅ CORREGIDO: Validación correcta del userInfo
-		if userInfo == nil || userInfo.UserInfo == nil || userInfo.UserInfo.UserInfo.IDUser == 0 {
+		if userInfo == nil || userInfo.UserInfo == nil || userInfo.UserInfo.IDUser == 0 {
 			response := common.NewErrorResponse(401, "Token inválido: información de usuario faltante")
 			common.WriteJSONResponse(w, response, 401)
 			return
@@ -72,12 +72,12 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 
 		// ✅ DEBUG: Log para verificar la estructura
 		fmt.Printf("✅ Token válido. UserInfo: ID=%d, Username=%s, Doc=%s\n",
-			userInfo.UserInfo.UserInfo.IDUser,
-			userInfo.UserInfo.UserInfo.Username,
-			userInfo.UserInfo.UserInfo.Doc)
+			userInfo.UserInfo.IDUser,
+			userInfo.UserInfo.Username,
+			userInfo.UserInfo.Doc)
 
 		// Almacenar usuario en caché
-		userID := userInfo.UserInfo.UserInfo.IDUser
+		userID := userInfo.UserInfo.IDUser
 		if userID != 0 {
 			userCache.Store(userID, userInfo)
 		}

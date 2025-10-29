@@ -16,7 +16,6 @@ func NewPermisoRepository(dbManager *database.DBManager) *PermisoRepository {
 	}
 }
 
-// FindByRolID simula: prisma.permiso.findMany({ where: { rol_x_permiso: { id_rol } } })
 func (r *PermisoRepository) FindByRolID(ctx context.Context, rolID int) ([]string, error) {
 	fmt.Printf("🔍 Buscando permisos para rol: %d\n", rolID)
 

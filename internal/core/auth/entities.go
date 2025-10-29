@@ -58,9 +58,3 @@ func encodePassword(plainPassword string) (string, error) {
 	}
 	return string(hashedBytes), nil
 }
-
-// comparePasswords compara un password plano con uno encriptado
-func comparePasswords(plainPassword, encryptedPassword string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(encryptedPassword), []byte(plainPassword))
-	return err == nil
-}

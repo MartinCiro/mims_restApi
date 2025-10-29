@@ -76,7 +76,7 @@ func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials
 	}
 
 	// 3. Generar token JWT
-	token, err := s.jwtService.GenerateJWT(jwt.UserInfo{
+	token, err := s.jwtService.GenerateJWT(jwt.JwtPayload{
 		IDUser:   user.ID,
 		Username: user.Username,
 		IDRol:    *user.IDRol,

@@ -67,17 +67,38 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 }
 
 func (a *AuthAdapter) RetrieveUserByID(ctx context.Context, userID int) (*auth.User, error) {
+	// 1. Buscar usuario
 	usuario, err := a.usuarioRepo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	return &auth.User{
-		ID:           usuario.ID,
-		Username:     usuario.Username,
-		Email:        usuario.Email,
-		PasswordHash: usuario.PasswordHash,
-		IDRol:        usuario.IDRol,
-		IDEstado:     usuario.IDEstado,
-	}, nil
+	if usuario == nil {
+		return nil, fmt.Errorf("usuario no encontrado")
+	}
+
+	// ✅ NUEVO: 2. Buscar permisos (si tiene rol)
+	if usuario.IDRol != nil {
+		permisos, err := a.permisoRepo.FindByRolID(ctx, *usuario.IDRol)
+		if err != nil {
+			fmt.Printf("⚠️ Error obteniendo permisos (continuando sin permisos): %v\n", err)
+			usuario.Permisos = []string{}
+		} else {
+			usuario.Permisos = permisos
+			fmt.Printf("✅ Permisos asignados: %d permisos\n", len(permisos))
+		}
+	}
+
+	// ✅ NUEVO: 3. Buscar información del rol
+	if usuario.IDRol != nil {
+		rol, err := a.rolRepo.FindByID(ctx, *usuario.IDRol)
+		if err != nil {
+			fmt.Printf("⚠️ Error obteniendo rol (continuando): %v\n", err)
+		} else if rol != nil {
+			usuario.RolNombre = rol.Nombre // ✅ Asignar nombre del rol
+			fmt.Printf("✅ Información de rol obtenida: %s\n", rol.Nombre)
+		}
+	}
+
+	return usuario, nil
 }

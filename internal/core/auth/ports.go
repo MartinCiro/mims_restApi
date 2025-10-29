@@ -23,4 +23,5 @@ type User struct {
 	IDRol        *int     `json:"id_rol,omitempty"`
 	IDEstado     *int     `json:"id_estado,omitempty"`
 	Permisos     []string `json:"permisos,omitempty"`
+	RolNombre    string   `json:"rol_nombre,omitempty"`
 }

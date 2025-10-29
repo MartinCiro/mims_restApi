@@ -15,6 +15,10 @@ type PermissionsMiddleware struct {
 	redisService *redis.Cache
 }
 
+type UserData struct {
+	Permisos []string `json:"permisos"`
+}
+
 func NewPermissionsMiddleware(redisService *redis.Cache) *PermissionsMiddleware {
 	return &PermissionsMiddleware{
 		redisService: redisService,
@@ -108,8 +112,4 @@ func (pm *PermissionsMiddleware) getUserPermissions(userID string) (*UserData, e
 	}
 
 	return &userData, nil
-}
-
-type UserData struct {
-	Permisos []string `json:"permisos"`
 }

@@ -59,12 +59,12 @@ type UserCacheData struct {
 
 // ProfileResponse define la estructura de respuesta para el perfil
 type ProfileResponse struct {
-	ID     int    `json:"id"`
-	Nombre string `json:"nombre"`
-	Rol    *int   `json:"rol"`
+	ID       int      `json:"id"`
+	Nombre   string   `json:"nombre"`
+	Rol      string   `json:"rol"`
+	Permisos []string `json:"permisos,omitempty"`
 	// Agrega otros campos que necesites exponer
 	// Email    string   `json:"email,omitempty"`
-	// Permisos []string `json:"permisos,omitempty"`
 }
 
 func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.ResponseBody[LoginResponse], error) {
@@ -127,7 +127,7 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.
 	}
 
 	// Generar JWT
-	token, err := s.jwtService.GenerateJWT(jwt.UserInfo{
+	token, err := s.jwtService.GenerateJWT(jwt.JwtPayload{
 		IDUser:   usuarioRetrieved.ID,
 		Username: usuarioRetrieved.Username,
 		IDRol:    *usuarioRetrieved.IDRol,
@@ -168,16 +168,15 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.
 }
 
 func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*common.ResponseBody[ProfileResponse], error) {
-	// Convertir userID string a int (ya que en tu estructura usas int)
+	// Convertir userID string a int
 	userIDInt, err := strconv.Atoi(userID)
 	if err != nil {
-		// Usar el mismo patrón que LoginUser - retornar error para que el handler lo maneje
 		return nil, fmt.Errorf("ID de usuario inválido")
 	}
 
 	userCacheKey := fmt.Sprintf("user:%d", userIDInt)
 
-	// Intentar obtener del cache primero (misma lógica que LoginUser)
+	// Intentar obtener del cache primero
 	cachedUser, err := s.redisService.Get(ctx, userCacheKey)
 	var userData UserCacheData
 
@@ -190,39 +189,49 @@ func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*commo
 	}
 
 	// Si no hay datos en cache, obtener de la base de datos
+	var usuarioRetrieved *User
 	if userData.IDUser == 0 {
-		// Obtener usuario del puerto de autenticación
-		usuarioRetrieved, err := s.authPort.RetrieveUserByID(ctx, userIDInt)
+		// Obtener usuario del puerto de autenticación (ahora incluye rol y permisos)
+		usuarioRetrieved, err = s.authPort.RetrieveUserByID(ctx, userIDInt)
 		if err != nil {
 			return nil, fmt.Errorf("usuario no encontrado")
 		}
 
 		userData = UserCacheData{
-			IDUser: usuarioRetrieved.ID,
-			Nombre: usuarioRetrieved.Username,
-			IDRol:  usuarioRetrieved.IDRol,
+			IDUser:   usuarioRetrieved.ID,
+			Nombre:   usuarioRetrieved.Username,
+			IDRol:    usuarioRetrieved.IDRol,
+			Permisos: usuarioRetrieved.Permisos, // ✅ Ahora incluye permisos en cache
 		}
 
-		// Guardar en Redis para futuras consultas (misma lógica que LoginUser)
+		// Guardar en Redis para futuras consultas
 		userDataJSON, err := json.Marshal(userData)
 		if err != nil {
 			log.Printf("Error marshaling user data for cache: %v", err)
 		} else {
-			err = s.redisService.Set(ctx, userCacheKey, string(userDataJSON), 24*time.Hour)
-			if err != nil {
-				log.Printf("Error setting user cache: %v", err)
+			if s.redisService != nil {
+				err = s.redisService.Set(ctx, userCacheKey, string(userDataJSON), 24*time.Hour)
+				if err != nil {
+					log.Printf("Error setting user cache: %v", err)
+				}
 			}
+		}
+	} else {
+		// Si usamos cache, obtener el usuario completo para el rol nombre
+		usuarioRetrieved, err = s.authPort.RetrieveUserByID(ctx, userIDInt)
+		if err != nil {
+			return nil, fmt.Errorf("usuario no encontrado")
 		}
 	}
 
-	// Construir respuesta del perfil (mismo patrón que LoginResponse)
+	// Construir respuesta del perfil con la información completa
 	profileData := ProfileResponse{
-		ID:     userData.IDUser,
-		Nombre: userData.Nombre,
-		Rol:    userData.IDRol,
+		ID:       usuarioRetrieved.ID,
+		Nombre:   usuarioRetrieved.Username,
+		Rol:      usuarioRetrieved.RolNombre,
+		Permisos: usuarioRetrieved.Permisos,
 	}
 
-	// Usar el mismo patrón de respuesta que LoginUser
 	return &common.ResponseBody[ProfileResponse]{
 		Success: true,
 		Code:    200,

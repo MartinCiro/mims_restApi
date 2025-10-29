@@ -14,19 +14,15 @@ type JWTService struct {
 }
 
 type JwtPayload struct {
-	UserInfo UserInfo `json:"userInfo"`
-	jwt.RegisteredClaims
-}
-
-type UserInfo struct {
 	IDUser   int    `json:"id_user"`
 	Username string `json:"username"`
 	IDRol    int    `json:"id_rol"`
 	Doc      string `json:"doc"`
+	jwt.RegisteredClaims
 }
 
 type VerifyResponse struct {
-	UserInfo *JwtPayload
+	UserInfo *JwtPayload // ← Ahora solo un nivel
 	JWT      *string
 }
 
@@ -38,15 +34,18 @@ func NewJWTService(secretKey, environment string) *JWTService {
 }
 
 // GenerateJWT genera un nuevo token JWT
-func (js *JWTService) GenerateJWT(userInfo UserInfo) (string, error) {
+func (js *JWTService) GenerateJWT(userInfo JwtPayload) (string, error) {
 	if js.secretKey == "" {
 		return "", errors.New("JWT_SECRETO no está definido en la configuración")
 	}
 
-	expirationTime := time.Now().Add(1 * time.Hour) // 3600 segundos = 1 hora
+	expirationTime := time.Now().Add(1 * time.Hour)
 
 	claims := &JwtPayload{
-		UserInfo: userInfo,
+		IDUser:   userInfo.IDUser,
+		Username: userInfo.Username,
+		IDRol:    userInfo.IDRol,
+		Doc:      userInfo.Doc,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -81,7 +80,7 @@ func (js *JWTService) VerifyJWT(tokenString string) (*VerifyResponse, error) {
 
 	// Verificar si el token está cerca de expirar y regenerar
 	if js.shouldRegenerateToken(verified) {
-		newToken, err := js.GenerateJWT(verified.UserInfo)
+		newToken, err := js.GenerateJWT(*verified)
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +104,7 @@ func (js *JWTService) decodeWithoutVerification(tokenString string) (*JwtPayload
 	}
 
 	// ✅ CORREGIDO: Validación correcta
-	if claims.UserInfo.IDUser == 0 {
+	if claims.IDUser == 0 {
 		return nil, errors.New("el JWT es inválido: falta id_user")
 	}
 
