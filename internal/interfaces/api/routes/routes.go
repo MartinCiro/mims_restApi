@@ -9,6 +9,7 @@ import (
 	"api_go/config"
 	"api_go/internal/app"
 	"api_go/internal/interfaces/api/common"
+	"api_go/internal/interfaces/api/handlers/auth"
 	common_handler "api_go/internal/interfaces/api/handlers/common"
 	"api_go/internal/interfaces/api/handlers/estados"
 	"api_go/internal/interfaces/api/handlers/login"
@@ -19,16 +20,13 @@ import (
 func SetupRouter(app *app.App, cfg *config.Config) http.Handler {
 	mux := http.NewServeMux()
 
-	// Servir archivos estáticos (equivalente a ServeStaticModule)
+	// Servir archivos estáticos
 	if cfg.IsDevelopment() {
 		setupStaticFiles(mux)
 	}
 
-	// Rutas de API bajo /api/
-	SetupAPIRoutes(mux, app)
-
-	// Rutas públicas
-	setupPublicRoutes(mux, app)
+	// Configurar todas las rutas
+	setupAllRoutes(mux, app)
 
 	// Aplicar middlewares globales
 	return withGlobalMiddleware(mux, cfg)
@@ -38,7 +36,6 @@ func SetupRouter(app *app.App, cfg *config.Config) http.Handler {
 func setupStaticFiles(mux *http.ServeMux) {
 	publicDir := "./public"
 
-	// Verificar si existe el directorio public
 	if _, err := os.Stat(publicDir); err == nil {
 		fs := http.FileServer(http.Dir(publicDir))
 		mux.Handle("/api-docs/", http.StripPrefix("/api-docs", fs))
@@ -46,43 +43,45 @@ func setupStaticFiles(mux *http.ServeMux) {
 	}
 }
 
-// setupPublicRoutes configura rutas públicas
-func setupPublicRoutes(mux *http.ServeMux, app *app.App) {
-	// Health checks
-	mux.HandleFunc("GET /", common_handler.HealthHandler)
-	mux.HandleFunc("GET /ready", common_handler.ReadyHandler(app.DB, app.RedisCache))
-
-	// Autenticación (pública)
-	// Login (público) - handler específico
-	loginHandler := login.NewLoginHandler(app.LoginService)
-	mux.HandleFunc("POST /api/auth/login", loginHandler.Login)
-
-	// Otras rutas públicas de auth
-	//authHandler := auth.NewAuthHandler(app.AuthService)
-	/* mux.HandleFunc("POST /api/auth/refresh", authHandler.RefreshToken)
-	mux.HandleFunc("POST /api/auth/validate", authHandler.ValidateToken) */
-}
-
-// setupAPIRoutes configura rutas protegidas de la API
-func SetupAPIRoutes(mux *http.ServeMux, app *app.App) {
+// setupAllRoutes configura todas las rutas (públicas y protegidas)
+func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	// Inicializar middlewares
 	authMiddleware := middlewares.NewAuthMiddleware(app.JWTService)
 
 	// Inicializar handlers
 	estadosHandler := estados.NewEstadosHandler(app.EstadoService)
+	loginHandler := login.NewLoginHandler(app.LoginService)
+	profileHandler := auth.NewProfileHandler(app.AuthService)
 
-	// Grupo de rutas protegidas
+	// ========== RUTAS PÚBLICAS ==========
+
+	// Health checks (EXPLÍCITAS - sin patrones que conflictuen)
+	mux.HandleFunc("GET /{$}", common_handler.HealthHandler) // {$} para coincidir exactamente con "/"
+	mux.HandleFunc("GET /ready", common_handler.ReadyHandler(app.DB, app.RedisCache))
+
+	// Autenticación (públicas)
+	mux.HandleFunc("POST /api/auth/login", loginHandler.Login)
+
+	// ========== RUTAS PROTEGIDAS ==========
+
+	// Crear un subrouter para rutas protegidas
 	protected := http.NewServeMux()
 
 	// Rutas de Estados
-	protected.HandleFunc("GET /estados", estadosHandler.ObtenerEstados)
-	protected.HandleFunc("GET /estados/{id}", estadosHandler.ObtenerEstadoXid)
-	protected.HandleFunc("POST /estados", estadosHandler.CrearEstado)
-	protected.HandleFunc("PUT /estados/{id}", estadosHandler.ActualizarEstado)
-	protected.HandleFunc("DELETE /estados/{id}", estadosHandler.EliminarEstado)
+	protected.HandleFunc("GET /api/estados", estadosHandler.ObtenerEstados)
+	protected.HandleFunc("GET /api/estados/{id}", estadosHandler.ObtenerEstadoXid)
+	protected.HandleFunc("POST /api/estados", estadosHandler.CrearEstado)
+	protected.HandleFunc("PUT /api/estados/{id}", estadosHandler.ActualizarEstado)
+	protected.HandleFunc("DELETE /api/estados/{id}", estadosHandler.EliminarEstado)
 
-	// ✅ Aplicar middlewares a rutas protegidas - usar "/" como prefijo
-	mux.Handle("/", authMiddleware.Handler(protected))
+	// Ruta de perfil
+	protected.HandleFunc("GET /api/profile", profileHandler.GetProfile)
+
+	// Aplicar middleware de autenticación a las rutas protegidas
+	// Usar patrones específicos para evitar conflictos
+	mux.Handle("/api/estados", authMiddleware.Handler(protected))
+	mux.Handle("/api/estados/", authMiddleware.Handler(protected))
+	mux.Handle("/api/profile", authMiddleware.Handler(protected))
 }
 
 // withGlobalMiddleware aplica middlewares globales

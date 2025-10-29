@@ -1,4 +1,3 @@
-// internal/infrastructure/repositories/permiso_repository.go
 package repositories
 
 import (

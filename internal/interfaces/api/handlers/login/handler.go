@@ -1,4 +1,3 @@
-// internal/interfaces/api/handlers/login/handler.go
 package login
 
 import (

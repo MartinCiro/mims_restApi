@@ -65,3 +65,19 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 
 	return usuario, nil
 }
+
+func (a *AuthAdapter) RetrieveUserByID(ctx context.Context, userID int) (*auth.User, error) {
+	usuario, err := a.usuarioRepo.FindByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &auth.User{
+		ID:           usuario.ID,
+		Username:     usuario.Username,
+		Email:        usuario.Email,
+		PasswordHash: usuario.PasswordHash,
+		IDRol:        usuario.IDRol,
+		IDEstado:     usuario.IDEstado,
+	}, nil
+}

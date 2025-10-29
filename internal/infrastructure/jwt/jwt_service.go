@@ -104,8 +104,8 @@ func (js *JWTService) decodeWithoutVerification(tokenString string) (*JwtPayload
 		return nil, errors.New("no se pudieron obtener los claims del token")
 	}
 
-	// Validar que tenga la información mínima requerida
-	if claims.UserInfo.IDUser != 0 {
+	// ✅ CORREGIDO: Validación correcta
+	if claims.UserInfo.IDUser == 0 {
 		return nil, errors.New("el JWT es inválido: falta id_user")
 	}
 

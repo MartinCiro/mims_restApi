@@ -1,4 +1,3 @@
-// internal/app/app.go
 package app
 
 import (
@@ -165,7 +164,13 @@ func (a *App) initializeServices() error {
 	authAdapter := repositories.NewAuthAdapter(usuarioRepo, rolRepo, permisoRepo)
 
 	// Inicializar servicios del core
-	a.AuthService = auth.NewAuthService(authAdapter)
+	a.AuthService = auth.NewAuthService(
+		authAdapter,
+		a.RedisCache,
+		a.JWTService,
+		a.PasswordService,
+	)
+
 	a.LoginService = login.NewLoginService(
 		authAdapter,
 		a.JWTService,

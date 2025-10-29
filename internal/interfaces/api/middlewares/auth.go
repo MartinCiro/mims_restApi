@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -62,36 +63,41 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 			return
 		}
 
-		// Validar información del usuario
-		if userInfo != nil && userInfo.UserInfo != nil && userInfo.UserInfo.UserInfo.Doc != "" {
-			response := common.NewErrorResponse(401, "Token inválido")
+		// ✅ CORREGIDO: Validación correcta del userInfo
+		if userInfo == nil || userInfo.UserInfo == nil || userInfo.UserInfo.UserInfo.IDUser == 0 {
+			response := common.NewErrorResponse(401, "Token inválido: información de usuario faltante")
 			common.WriteJSONResponse(w, response, 401)
 			return
 		}
 
-		// Almacenar usuario en caché (de forma segura con goroutines)
-		if userInfo != nil && userInfo.UserInfo != nil {
-			userID := userInfo.UserInfo.UserInfo.IDUser
-			if userID != 0 {
-				userCache.Store(userID, userInfo)
-			}
+		// ✅ DEBUG: Log para verificar la estructura
+		fmt.Printf("✅ Token válido. UserInfo: ID=%d, Username=%s, Doc=%s\n",
+			userInfo.UserInfo.UserInfo.IDUser,
+			userInfo.UserInfo.UserInfo.Username,
+			userInfo.UserInfo.UserInfo.Doc)
+
+		// Almacenar usuario en caché
+		userID := userInfo.UserInfo.UserInfo.IDUser
+		if userID != 0 {
+			userCache.Store(userID, userInfo)
 		}
 
-		// Adjuntar información del usuario al contexto
+		// ✅ CORREGIDO: Agregar userID al contexto (como string)
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "user", userInfo)
+		userIDStr := strconv.Itoa(userID)
+		ctx = context.WithValue(ctx, "userID", userIDStr)
 
-		/* // Si hay nuevo token, agregarlo al header de respuesta
-		if newToken != "" {
-			w.Header().Set("X-New-Token", newToken)
-		} */
+		// También mantener el userInfo completo por si se necesita
+		ctx = context.WithValue(ctx, "userInfo", userInfo)
+
+		fmt.Printf("✅ Contexto actualizado con userID: %s\n", userIDStr)
 
 		// Continuar con el siguiente handler
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
-// GetUserInfo obtiene información del usuario desde la caché (método estático equivalente)
+// GetUserInfo obtiene información del usuario desde la caché
 func GetUserInfo(idUser string) (interface{}, bool) {
 	return userCache.Load(idUser)
 }

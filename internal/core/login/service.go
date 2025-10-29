@@ -1,4 +1,3 @@
-// internal/core/login/service.go
 package login
 
 import (

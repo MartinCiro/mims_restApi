@@ -1,4 +1,3 @@
-// internal/infrastructure/repositories/rol_repository.go
 package repositories
 
 import (

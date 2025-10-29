@@ -1,4 +1,3 @@
-// internal/interfaces/api/common/responses.go
 package common
 
 import (
@@ -41,4 +40,35 @@ func WriteJSONResponse(w http.ResponseWriter, response interface{}, statusCode i
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(response)
+}
+
+// Helpers para Gin (si los necesitas)
+func Success(w http.ResponseWriter, data interface{}) {
+	response := NewSuccessResponse(data)
+	WriteJSONResponse(w, response, http.StatusOK)
+}
+
+func BadRequest(w http.ResponseWriter, message string) {
+	response := NewErrorResponse(http.StatusBadRequest, message)
+	WriteJSONResponse(w, response, http.StatusBadRequest)
+}
+
+func Unauthorized(w http.ResponseWriter, message string) {
+	response := NewErrorResponse(http.StatusUnauthorized, message)
+	WriteJSONResponse(w, response, http.StatusUnauthorized)
+}
+
+func Forbidden(w http.ResponseWriter, message string) {
+	response := NewErrorResponse(http.StatusForbidden, message)
+	WriteJSONResponse(w, response, http.StatusForbidden)
+}
+
+func NotFound(w http.ResponseWriter, message string) {
+	response := NewErrorResponse(http.StatusNotFound, message)
+	WriteJSONResponse(w, response, http.StatusNotFound)
+}
+
+func InternalServerError(w http.ResponseWriter, message string) {
+	response := NewErrorResponse(http.StatusInternalServerError, message)
+	WriteJSONResponse(w, response, http.StatusInternalServerError)
 }

@@ -1,4 +1,3 @@
-// internal/core/auth/ports.go
 package auth
 
 import "context"
@@ -6,6 +5,7 @@ import "context"
 // AuthPort define el contrato para la autenticación
 type AuthPort interface {
 	RetrieveUser(ctx context.Context, authData AuthData) (*User, error)
+	RetrieveUserByID(ctx context.Context, userID int) (*User, error)
 }
 
 // AuthData contiene los datos necesarios para la autenticación
