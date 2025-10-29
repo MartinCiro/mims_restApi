@@ -3,7 +3,6 @@ package app
 import (
 	"context"
 	"fmt"
-	"log"
 	"strconv"
 
 	"gorm.io/gorm"
@@ -17,6 +16,7 @@ import (
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/infrastructure/redis"
 	"api_go/internal/infrastructure/repositories"
+	"api_go/pkg/logger"
 	"api_go/pkg/utils"
 )
 
@@ -59,7 +59,7 @@ func (a *App) Initialize(cfg *config.Config) error {
 	// Ejecutar migraciones si es necesario
 	if cfg.IsDevelopment() {
 		if err := a.runMigrations(); err != nil {
-			log.Printf("⚠️  Error en migraciones: %v", err)
+			logger.Warn("error en migraciones", "error", err)
 		}
 	}
 
@@ -89,7 +89,7 @@ func (a *App) initializeDatabase() (*gorm.DB, error) {
 	port, err := strconv.Atoi(a.Config.PortDB)
 	if err != nil {
 		port = 5432 // Valor por defecto
-		log.Printf("⚠️  Usando puerto por defecto para BD: %d", port)
+		logger.Warn("usando puerto por defecto para BD", "port", port)
 	}
 
 	dbConfig := database.DBConfig{
@@ -115,31 +115,16 @@ func (a *App) initializeDatabase() (*gorm.DB, error) {
 }
 
 func (a *App) initializeRedis() *redis.Cache {
-	// Validar que la configuración de Redis esté presente
-	if a.Config.RedisURL == "" {
-		log.Printf("⚠️  REDIS_URL no configurada, usando valores por defecto")
-		// Puedes setear valores por defecto temporalmente si es necesario
-		a.Config.RedisURL = "redis://localhost:6379"
-	}
-
-	if a.Config.RedisTTL == 0 {
-		log.Printf("⚠️  REDIS_TTL no configurado, usando valor por defecto: 3600")
-		a.Config.RedisTTL = 3600
-	}
-
 	cache := redis.InitializeCache(a.Config)
-
-	log.Printf("🔧 Redis configurado - URL: %s, TTL: %d segundos",
-		a.Config.RedisURL, a.Config.RedisTTL)
-
+	logger.Info("redis configurado", "url", a.Config.RedisURL, "ttl", a.Config.RedisTTL)
 	return cache
 }
 
 func (a *App) initializeJWTService() *jwt.JWTService {
 	if a.Config.JWTSecret == "" {
-		log.Printf("⚠️  ADVERTENCIA: JWTSecret está vacío en la configuración")
+		logger.Warn("JWTSecret está vacío en la configuración")
 	} else {
-		log.Printf("✅ JWTSecret cargado correctamente (longitud: %d)", len(a.Config.JWTSecret))
+		logger.Info("JWTSecret cargado correctamente", "length", len(a.Config.JWTSecret))
 	}
 	return jwt.NewJWTService(
 		a.Config.JWTSecret,
@@ -147,7 +132,6 @@ func (a *App) initializeJWTService() *jwt.JWTService {
 	)
 }
 
-// internal/app/app.go
 func (a *App) initializeServices() error {
 	// Inicializar servicios de utilidad
 	a.PasswordService = utils.NewPasswordService(a.Config.JWTSalt)
@@ -183,12 +167,11 @@ func (a *App) initializeServices() error {
 	estadosAdapter := repositories.NewEstadosAdapter(a.DB, a.RedisCache)
 	a.EstadoService = estados.NewEstadoService(estadosAdapter)
 
-	log.Println("✅ Servicios del core inicializados correctamente")
+	logger.Info("servicios del core inicializados correctamente")
 	return nil
 }
 
 func (a *App) runMigrations() error {
-	log.Println("🔄 Ejecutando migraciones automáticas...")
 
 	// Ejecutar migraciones de GORM
 	if err := a.DB.AutoMigrate(
@@ -203,20 +186,18 @@ func (a *App) runMigrations() error {
 		return fmt.Errorf("error en migraciones automáticas: %v", err)
 	}
 
-	log.Println("✅ Migraciones ejecutadas correctamente")
+	logger.Info("migraciones ejecutadas correctamente")
 	return nil
 }
 
 func (a *App) Shutdown() {
-	log.Println("🛑 Cerrando servicios de la aplicación...")
+	logger.Info("cerrando servicios de la aplicación")
 
 	// Cerrar base de datos
 	if a.DB != nil {
 		if sqlDB, err := a.DB.DB(); err == nil {
 			if err := sqlDB.Close(); err != nil {
-				log.Printf("⚠️  Error cerrando conexión de BD: %v", err)
-			} else {
-				log.Println("✅ Conexión de BD cerrada correctamente")
+				logger.Warn("error cerrando conexión de BD", "error", err)
 			}
 		}
 	}
@@ -224,13 +205,11 @@ func (a *App) Shutdown() {
 	// Cerrar Redis
 	if a.RedisCache != nil {
 		if err := a.RedisCache.Close(); err != nil {
-			log.Printf("⚠️  Error cerrando conexión de Redis: %v", err)
-		} else {
-			log.Println("✅ Conexión de Redis cerrada correctamente")
+			logger.Warn("error cerrando conexión de Redis", "error", err)
 		}
 	}
 
-	log.Println("✅ Todos los servicios cerrados correctamente")
+	logger.Info("todos los servicios cerrados correctamente")
 }
 
 // HealthCheck verifica el estado de todos los servicios

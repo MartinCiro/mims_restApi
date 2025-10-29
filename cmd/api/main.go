@@ -12,16 +12,27 @@ import (
 	"api_go/config"
 	"api_go/internal/app"
 	"api_go/internal/interfaces/api/routes"
+	"api_go/pkg/logger"
 )
 
 func main() {
 	// Cargar configuración
 	cfg := config.Load()
 
+	if cfg.Env == "Production" {
+		logger.SetupProduction()
+	} else {
+		logger.SetupDevelopment()
+	}
+	logger.Info("iniciando aplicación",
+		"version", "1.0.0",
+		"environment", cfg.Env,
+		"server_address", http.LocalAddrContextKey)
+
 	// Inicializar aplicación
 	application := app.NewApp()
 	if err := application.Initialize(cfg); err != nil {
-		log.Fatalf("❌ Error inicializando aplicación: %v", err)
+		logger.Fatal("fallo al inicializar aplicación", "error", err)
 	}
 	defer application.Shutdown()
 
@@ -36,11 +47,10 @@ func main() {
 
 	// Iniciar servidor en goroutine
 	go func() {
-		log.Printf("🚀 Server is running on http://localhost:%s", cfg.Port)
-		/* log.Printf("📝 Environment: %s", cfg.Env) */
+		logger.Info("iniciando servidor HTTP", "address", server.Addr)
 
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("❌ Error iniciando servidor: %v", err)
+			logger.Fatal("❌ Error iniciando servidor: %v", err)
 		}
 	}()
 
