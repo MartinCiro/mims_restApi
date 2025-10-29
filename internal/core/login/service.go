@@ -45,7 +45,6 @@ type LoginCredentials struct {
 // LoginResult es un objeto del dominio, NO una respuesta HTTP
 type LoginResult struct {
 	Token     string `json:"token"`
-	TokenType string `json:"token_type"`
 	ExpiresIn int    `json:"expires_in"`
 }
 
@@ -100,7 +99,6 @@ func (s *LoginService) Execute(ctx context.Context, credentials LoginCredentials
 	// 5. Construir resultado del dominio
 	return &LoginResult{
 		Token:     token,
-		TokenType: "Bearer",
 		ExpiresIn: s.config.JWTExpireTime, // En segundos
 	}, nil
 }
