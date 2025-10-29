@@ -70,12 +70,6 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 			return
 		}
 
-		// ✅ DEBUG: Log para verificar la estructura
-		fmt.Printf("✅ Token válido. UserInfo: ID=%d, Username=%s, Doc=%s\n",
-			userInfo.UserInfo.IDUser,
-			userInfo.UserInfo.Username,
-			userInfo.UserInfo.Doc)
-
 		// Almacenar usuario en caché
 		userID := userInfo.UserInfo.IDUser
 		if userID != 0 {

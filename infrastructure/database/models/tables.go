@@ -59,7 +59,7 @@ type Usuario struct {
 	Documento       string     `gorm:"primaryKey;type:text" json:"documento"`
 	Nombres         string     `gorm:"type:text;not null" json:"nombres"`
 	Apellido        string     `gorm:"type:text;not null" json:"apellido"`
-	Email           string     `gorm:"type:text;not null" json:"email"`
+	Email           string     `gorm:"type:text;not null;uniqueIndex" json:"email"`
 	InfoPerfil      *string    `gorm:"type:text" json:"info_perfil,omitempty"`
 	NumContacto     *string    `gorm:"type:text" json:"num_contacto,omitempty"`
 	NomUser         string     `gorm:"type:text;not null" json:"nom_user"`

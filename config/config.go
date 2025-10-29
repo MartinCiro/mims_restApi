@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -26,8 +27,10 @@ type Config struct {
 	JWTExpireTime int
 
 	// Redis
-	RedisTTL int
-	RedisURL string
+	RedisTTL      int
+	RedisURL      string
+	RedisPort     string
+	RedisPassword string
 }
 
 // Load carga la configuración desde variables de entorno
@@ -36,9 +39,22 @@ func Load() *Config {
 	err := godotenv.Load()
 	if err != nil {
 		log.Printf("⚠️  No se pudo cargar el archivo .env: %v", err)
-	} /* else {
-		log.Println("✅ Archivo .env cargado correctamente")
-	} */
+	}
+
+	// Construir Redis URL si no está definida completamente
+	redisURL := getEnv("REDIS_URL", "")
+	if redisURL == "" {
+		// Construir URL desde componentes
+		redisHost := getEnv("REDIS_URL", "localhost")
+		redisPort := getEnv("REDIS_PORT", "6379")
+		redisPassword := getEnv("REDIS_PASSWORD", "")
+
+		if redisPassword != "" {
+			redisURL = fmt.Sprintf("redis://:%s@%s:%s", redisPassword, redisHost, redisPort)
+		} else {
+			redisURL = fmt.Sprintf("redis://%s:%s", redisHost, redisPort)
+		}
+	}
 
 	return &Config{
 		// Server Config
@@ -50,7 +66,7 @@ func Load() *Config {
 		PasswordDB: getEnv("PASS_DB", ""),
 		ServerDB:   getEnv("HOST_DB", ""),
 		Database:   getEnv("NAME_DB", ""),
-		PortDB:     getEnv("PORT_DB", "5432"), // Valor por defecto
+		PortDB:     getEnv("PORT_DB", "5432"),
 
 		// Auth
 		JWTSecret:     getEnv("JWT_SECRETO", ""),
@@ -58,9 +74,24 @@ func Load() *Config {
 		JWTExpireTime: getEnvAsInt("JWT_TIEMPO_EXPIRA", 3600),
 
 		// Redis
-		RedisTTL: getEnvAsInt("REDIS_TTL", 3600),
-		RedisURL: getEnv("REDIS_URL", "redis://localhost:6379"),
+		RedisTTL:      getEnvAsInt("REDIS_TTL", 3600),
+		RedisURL:      redisURL,
+		RedisPort:     getEnv("REDIS_PORT", "6379"),
+		RedisPassword: getEnv("REDIS_PASSWORD", ""),
 	}
+}
+
+// GetRedisConfigInfo retorna información de Redis (sin password) para logs
+func (c *Config) GetRedisConfigInfo() string {
+	// Ocultar password para seguridad
+	maskedURL := c.RedisURL
+	if c.RedisPassword != "" {
+		// Si tenemos password separada, construir URL enmascarada
+		maskedURL = fmt.Sprintf("redis://:***@%s:%s",
+			getEnv("REDIS_URL", "localhost"),
+			c.RedisPort)
+	}
+	return fmt.Sprintf("URL: %s, TTL: %ds", maskedURL, c.RedisTTL)
 }
 
 // getEnv obtiene variable de entorno con valor por defecto
