@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: go-api-service
+spec:
+  selector:
+    app: go-api
+    tier: backend
+  ports:
+  - protocol: TCP
+    port: 4000              # ← Puerto interno del Service
+    targetPort: 4000        # ← Puerto del contenedor (tu API)
+    nodePort: 30400         # ← ⭐ Puerto externo para desarrollo
+  type: NodePort            # ← ⭐ Para acceso externo en desarrollo

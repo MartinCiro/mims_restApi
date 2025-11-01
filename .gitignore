@@ -12,3 +12,4 @@
 conexion_whatsapp.go
 node_modules
 *lock*
+secrets.yaml

@@ -1,72 +1,156 @@
+## 📁 **ESTRUCTURA COMPLETA DEL PROYECTO**
+
+``` bash
+template-nest/
+├── 📄 Dockerfile
+├── 📄 Makefile
+├── 📄 README.md
+├── 📄 go.mod
+├── 📄 go.sum
+├── 📄 docker-compose.yml
+├── 📄 .env
+├── 📄 .env.template
+├── 📄 package-lock.json
+├── 📁 cmd/
+│   └── 📁 api/
+│       └── 📄 main.go
+├── 📁 config/
+│   └── 📄 config.go
+├── 📁 example/
+├── 📁 infrastructure/
+│   └── 📁 database/
+│       └── 📁 models/
+│           └── 📄 tables.go
+├── 📁 internal/
+│   ├── 📁 app/
+│   │   └── 📄 app.go
+│   ├── 📁 core/
+│   │   ├── 📁 auth/
+│   │   │   ├── 📄 entities.go
+│   │   │   ├── 📄 ports.go
+│   │   │   └── 📄 service.go
+│   │   ├── 📁 common/
+│   │   │   └── 📄 entities.go
+│   │   ├── 📁 estados/
+│   │   │   ├── 📄 entities.go
+│   │   │   ├── 📄 ports.go
+│   │   │   └── 📄 service.go
+│   │   └── 📁 login/
+│   │       └── 📄 service.go
+│   ├── 📁 infrastructure/
+│   │   ├── 📁 database/
+│   │   │   ├── 📄 database.go
+│   │   │   ├── 📄 db_manager.go
+│   │   │   └── 📁 models/
+│   │   │       └── 📄 usuario.go
+│   │   ├── 📁 jwt/
+│   │   │   └── 📄 jwt_service.go
+│   │   ├── 📁 redis/
+│   │   │   ├── 📄 cache.go
+│   │   │   └── 📄 initializer.go
+│   │   └── 📁 repositories/
+│   │       ├── 📄 auth_repository.go
+│   │       ├── 📄 estado_repository.go
+│   │       ├── 📄 permiso_repository.go
+│   │       ├── 📄 rol_repository.go
+│   │       └── 📄 usuario_repository.go
+│   └── 📁 interfaces/
+│       └── 📁 api/
+│           ├── 📁 common/
+│           │   └── 📄 responses.go
+│           ├── 📁 estados/
+│           │   ├── 📄 adapters.go
+│           │   └── 📄 dtos.go
+│           ├── 📁 handlers/
+│           │   ├── 📁 auth/
+│           │   │   ├── 📄 handler.go
+│           │   │   └── 📄 profile_handler.go
+│           │   ├── 📁 common/
+│           │   │   └── 📄 handler.go
+│           │   ├── 📁 estados/
+│           │   │   └── 📄 handler.go
+│           │   ├── 📁 login/
+│           │   │   └── 📄 handler.go
+│           │   └── 📁 usuarios/
+│           │       └── 📄 handler.go
+│           ├── 📁 middlewares/
+│           │   ├── 📄 auth.go
+│           │   ├── 📄 permissions.go
+│           │   └── 📄 permissions_constants.go
+│           └── 📁 routes/
+│               ├── 📄 middleware_helpers.go
+│               └── 📄 routes.go
+├── 📁 manifests/                          # 🆕 KUBERNETES MANIFESTS
+│   ├── 📁 go-api/
+│   │   ├── 📄 configmap-simple.yaml       # ConfigMap simplificado
+│   │   ├── 📄 configmap.yaml              # ConfigMap completo
+│   │   ├── 📄 deployment.yaml             # Deployment de la API Go
+│   │   └── 📄 service.yaml                # Service de la API
+│   ├── 📁 postgres/
+│   │   ├── 📄 deployment.yaml             # Deployment de PostgreSQL
+│   │   ├── 📄 secret.yaml                 # Secret de PostgreSQL
+│   │   └── 📄 service.yaml                # Service de PostgreSQL
+│   ├── 📁 redis/
+│   │   ├── 📄 deployment.yaml             # Deployment de Redis
+│   │   └── 📄 service.yaml                # Service de Redis
+│   └── 📁 shared/
+│       ├── 📄 network-policies.yaml       # Políticas de red
+│       ├── 📄 secrets-verification.txt    # Verificación de secrets (NO COMMIT)
+│       ├── 📄 secrets.yaml                # Secrets de la aplicación
+│       └── 📄 volumes.yaml                # Volúmenes persistentes
+├── 📁 pkg/
+│   ├── 📁 logger/
+│   │   └── 📄 logger.go
+│   └── 📁 utils/
+│       ├── 📄 http_helpers.go
+│       ├── 📄 password.go
+│       └── 📄 validators.go
+└── 📁 scripts/
+    └── 📄 generate-secrets.sh             # Script para generar secrets
+
+40 directories, 65 files
+```
+
+### 🚀 **ARCHIVOS KUBERNETES**
+
+#### **`manifests/go-api/`**
+
+- **`deployment.yaml`** - 3 réplicas de tu API Go
+- **`service.yaml`** - Service ClusterIP en puerto 80
+- **`configmap.yaml`** - Configuración de la aplicación
+- **`configmap-simple.yaml`** - Versión simplificada
+
+#### **`manifests/postgres/`**
+
+- **`deployment.yaml`** - PostgreSQL con volumen persistente
+- **`service.yaml`** - Service en puerto 5432
+- **`secret.yaml`** - Credenciales de base de datos
+
+#### **`manifests/redis/`**
+
+- **`deployment.yaml`** - Redis con autenticación
+- **`service.yaml`** - Service en puerto 6379
+
+#### **`manifests/shared/`**
+
+- **`volumes.yaml`** - PVCs para PostgreSQL (5Gi) y Redis (1Gi)
+- **`secrets.yaml`** - Secrets de aplicación (JWT, DB, Redis)
+- **`network-policies.yaml`** - Seguridad de red
+- **`secrets-verification.txt`** - Para desarrollo (NO committear)
+
+#### 📋 **COMANDOS DE DESPLIEGUE**
+
 ```bash
-.
-├── cmd/
-│   └── api/
-│       └── main.go                          # Punto de entrada de la aplicación
-├── config/
-│   └── config.go                            # Configuración y variables de entorno
-├── internal/
-│   ├── app/
-│   │   └── app.go                           # Inicialización y configuración principal
-│   ├── core/                                # Lógica de negocio (Hexagonal Core)
-│   │   ├── auth/
-│   │   │   ├── entities.go                  # Entidades: User, AuthData, LoginCredentials
-│   │   │   ├── ports.go                     # Interfaces: AuthPort
-│   │   │   └── service.go                   # Lógica: AuthService
-│   │   ├── common/
-│   │   │   └── entities.go                  # Entidades comunes: UserContext
-│   │   ├── estados/
-│   │   │   ├── entities.go                  # Entidades: Estado, EstadoData, EstadoDataUpdate, EstadoDataXid
-│   │   │   ├── ports.go                     # Interfaces: EstadosPort
-│   │   │   └── service.go                   # Lógica: EstadoService
-│   │   └── login/
-│   │       └── service.go                   # Caso de uso: LoginService, LoginResult
-│   ├── infrastructure/                      # Adaptadores de infraestructura
-│   │   ├── database/
-│   │   │   ├── database.go                  # Conexión y configuración BD
-│   │   │   ├── db_manager.go                # DBManager (simulador Prisma)
-│   │   │   └── models/
-│   │   │       └── usuario.go               # Modelos GORM (opcional)
-│   │   ├── jwt/
-│   │   │   └── jwt_service.go               # Servicio JWT: JWTService, UserInfo, JwtPayload
-│   │   ├── redis/
-│   │   │   ├── cache.go                     # Cliente Redis: Cache
-│   │   │   └── initializer.go               # Inicialización Redis
-│   │   └── repositories/                    # Implementaciones de puertos
-│   │       ├── auth_repository.go           # AuthAdapter (coordinador)
-│   │       ├── estado_repository.go         # EstadosAdapter
-│   │       ├── permiso_repository.go        # PermisoRepository
-│   │       ├── rol_repository.go            # RolRepository
-│   │       └── usuario_repository.go        # UsuarioRepository
-│   └── interfaces/                          # Adaptadores de interfaces (HTTP)
-│       └── api/
-│           ├── common/
-│           │   └── responses.go             # ResponseBody[T], helpers de respuesta
-│           ├── estados/
-│           │   ├── adapters.go              # Adaptadores: ToEstadoData, FromEstado, etc.
-│           │   └── dtos.go                  # DTOs: CreateEstadoRequest, UpdateEstadoRequest, etc.
-│           ├── handlers/
-│           │   ├── auth/
-│           │   │   └── handler.go           # AuthHandler
-│           │   ├── common/
-│           │   │   └── handler.go           # HealthHandler, ReadyHandler
-│           │   ├── estados/
-│           │   │   └── handler.go           # EstadosHandler + DTOs de validación
-│           │   ├── login/
-│           │   │   └── handler.go           # LoginHandler + LoginRequestDTO
-│           │   └── usuarios/
-│           │       └── handler.go           # UsuariosHandler (placeholder)
-│           ├── middlewares/
-│           │   ├── auth.go                  # AuthMiddleware
-│           │   └── permissions.go           # PermissionsMiddleware
-│           └── routes/
-│               └── routes.go                # Configuración de rutas y middlewares globales
-└── pkg/
-    └── utils/                               # Utilidades compartidas
-        ├── http_helpers.go                  # Helpers HTTP: ValidateRequired, etc.
-        ├── password.go                      # PasswordService
-        ├── validation_errors.go             # ValidationError, ValidationErrors, HandleException
-        └── validators.go                    # Validadores: ValidarBlank, ValidarEmail, etc.
+# Flujo completo
+make build                    # Construir imagen Docker
+make generate-secrets         # Generar secrets desde .env
+make deploy                   # Desplegar en Kubernetes
+make status                   # Verificar estado
+
+# Comandos útiles
+make logs                     # Ver logs de la API
+make port-forward             # Acceder localmente (localhost:8080)
+make clean                    # Limpiar recursos
 ```
 
 
@@ -74,7 +158,7 @@
 
 ### **Flujo de Datos:**
 
-```
+``` go
 HTTP Request 
     → Routes 
     → Middlewares (Auth, Permissions)
@@ -92,32 +176,35 @@ HTTP Response
 ```
 
 ### **Core (Dominio)**
+
 - **`internal/core/`** - Lógica de negocio pura
 - **`entities/`** - Entidades del dominio
 - **`ports/`** - Interfaces que el dominio espera
 - **`services/`** - Casos de uso y lógica de negocio
 
 ### **Infrastructure (Adaptadores)**
+
 - **`internal/infrastructure/`** - Implementaciones concretas
 - **`repositories/`** - Adaptadores de persistencia
 - **`jwt/`, `redis/`** - Adaptadores de servicios externos
 
 ### **Interfaces (Controladores)**
+
 - **`internal/interfaces/`** - Adaptadores de entrada (HTTP)
 - **`handlers/`** - Controladores HTTP
 - **`middlewares/`** - Middlewares de la API
 
 ### **Shared**
+
 - **`pkg/utils/`** - Utilidades compartidas
 - **`config/`** - Configuración
 
 ## **Flujo de Datos:**
 
-```
+``` go
 HTTP Request → Routes → Middlewares → Handlers → Services → Ports → Adapters → BD/Redis
 HTTP Response ← Handlers ← Services ← Ports ← Adapters ← BD/Redis
 ```
-
 
 ## 📋 Cambiar el Método de Autenticación (Ejemplo Email)
 

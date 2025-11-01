@@ -1,0 +1,112 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: go-api-deployment
+spec:
+  replicas: 1                        # ← 1 replica en desarrollo
+  selector:
+    matchLabels:
+      app: go-api
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: go-api
+        tier: backend
+    spec:
+      containers:
+      - name: go-api
+        image: go-api:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 4000        # ← Coherente con APP_PORT 4000
+        env:
+        # Variables desde ConfigMap
+        - name: APP_ENV
+          valueFrom:
+            configMapKeyRef:
+              name: go-api-config
+              key: APP_ENV
+        - name: PORT
+          valueFrom:
+            configMapKeyRef:
+              name: go-api-config
+              key: APP_PORT
+        - name: DB_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: go-api-config
+              key: DB_HOST
+        - name: DB_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: go-api-config
+              key: DB_PORT
+        - name: DB_USER
+          valueFrom:
+            configMapKeyRef:
+              name: go-api-config
+              key: DB_USER
+        - name: DB_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: go-api-config
+              key: DB_NAME
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: go-api-config
+              key: REDIS_HOST
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: go-api-config
+              key: REDIS_PORT
+
+        # Secrets
+        - name: PASS_DB
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: DB_PASSWORD
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: REDIS_PASSWORD
+        - name: JWT_SECRETO
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_SECRET
+        - name: JWT_SALT
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: JWT_SALT
+              
+        # Variables calculadas
+        - name: DB_URL
+          value: "postgresql://$(DB_USER):$(PASS_DB)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable"
+        - name: REDIS_URL
+          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)"
+
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 4000                # ← Puerto 4000 para health checks
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 4000                # ← Puerto 4000 para readiness
+          initialDelaySeconds: 5
+          periodSeconds: 5
