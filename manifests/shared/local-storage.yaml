@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: postgres-prod-pv
+  labels:
+    type: local
+    app: postgres
+spec:
+  capacity:
+    storage: 5Gi  # ← Coherente con tu PVC de 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain  # ← CRÍTICO para producción
+  storageClassName: local-storage
+  local:
+    path: /mnt/k8s-storage/postgres
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - localhost.localdomain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-prod-pv
+  labels:
+    type: local
+    app: redis
+spec:
+  capacity:
+    storage: 1Gi 
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain 
+  storageClassName: local-storage
+  local:
+    path: /mnt/k8s-storage/redis
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - localhost.localdomain
