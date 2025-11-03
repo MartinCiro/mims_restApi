@@ -57,9 +57,11 @@ func (a *App) Initialize(cfg *config.Config) error {
 	}
 
 	// Ejecutar migraciones si es necesario
-	if cfg.IsDevelopment() {
-		if err := a.runMigrations(); err != nil {
-			logger.Warn("error en migraciones", "error", err)
+	if err := a.runMigrations(); err != nil {
+		logger.Error("❌ Error en migraciones", "error", err)
+		// En producción podrías continuar, en desarrollo fallar
+		if cfg.IsDevelopment() {
+			return fmt.Errorf("error en migraciones: %v", err)
 		}
 	}
 
@@ -172,21 +174,27 @@ func (a *App) initializeServices() error {
 }
 
 func (a *App) runMigrations() error {
+	logger.Info("🔄 Iniciando migraciones...")
 
-	// Ejecutar migraciones de GORM
-	if err := a.DB.AutoMigrate(
+	models := []interface{}{
 		&models.Migration{},
 		&models.Estado{},
 		&models.Rol{},
 		&models.Permiso{},
 		&models.RolXPermiso{},
 		&models.Usuario{},
-		// Agregar otros modelos aquí
-	); err != nil {
-		return fmt.Errorf("error en migraciones automáticas: %v", err)
 	}
 
-	logger.Info("migraciones ejecutadas correctamente")
+	for _, model := range models {
+		logger.Info("Migrando modelo", "model", fmt.Sprintf("%T", model))
+		if err := a.DB.AutoMigrate(model); err != nil {
+			logger.Error("Error migrando modelo", "model", fmt.Sprintf("%T", model), "error", err)
+			return err
+		}
+		logger.Info("✅ Modelo migrado", "model", fmt.Sprintf("%T", model))
+	}
+
+	logger.Info("✅ Todas las migraciones completadas")
 	return nil
 }
 
