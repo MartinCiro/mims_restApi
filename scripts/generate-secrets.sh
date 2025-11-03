@@ -31,6 +31,8 @@ get_secure_value() {
         value=$(openssl rand -base64 "$default_length" | head -c "$default_length")
     fi
     
+    # Eliminar todos los caracteres whitespace (espacios, tabs, nuevas líneas)
+    value=$(printf '%s' "$value" | tr -d '[:space:]')
     echo "$value"
 }
 
@@ -45,24 +47,26 @@ get_secure_value_with_hash() {
     
     # Verificar variable primaria primero, luego fallback
     if [ -n "${!primary_var}" ]; then
-        echo "   ✅ Using $primary_var: $description"
+        echo "   ✅ Using $primary_var: $description" >&2
         value="${!primary_var}"
     elif [ -n "${!fallback_var}" ]; then
-        echo "   ✅ Using $fallback_var (fallback): $description"
+        echo "   ✅ Using $fallback_var (fallback): $description" >&2
         value="${!fallback_var}"
     else
-        echo "   ⚠️  Neither $primary_var nor $fallback_var set, generating random value"
+        echo "   ⚠️  Neither $primary_var nor $fallback_var set, generating random value" >&2
         value=$(openssl rand -base64 "$default_length" | head -c "$default_length")
     fi
     
-    # Generar SHA256 del valor
+    # Limpiar espacios, tabs y nuevas líneas
+    value=$(echo "$value" | tr -d '[:space:]')
+    
+    # Generar SHA256 del valor (ya limpio)
     local hash
     hash=$(echo -n "$value" | sha256sum | cut -d' ' -f1)
     
-    # Devolver valor y hash
+    # Devolver SOLO valor y hash (sin mensajes)
     echo "$value|$hash"
 }
-
 echo ""
 echo "📝 Generating values from your configuration..."
 
@@ -84,13 +88,13 @@ JWT_SALT=$(echo "$JWT_SALT_DATA" | cut -d'|' -f1)
 JWT_SALT_HASH=$(echo "$JWT_SALT_DATA" | cut -d'|' -f2)
 
 # Obtener otras configuraciones importantes
-DB_USER=$(get_secure_value "USER_DB" "DB_USER" 0 "Database User")
-DB_NAME=$(get_secure_value "NAME_DB" "DB_NAME" 0 "Database Name")
-DB_HOST=$(get_secure_value "HOST_DB" "DB_HOST" 0 "Database Host")
-DB_PORT=$(get_secure_value "PORT_DB" "DB_PORT" 0 "Database Port")
-REDIS_HOST=$(get_secure_value "REDIS_URL" "REDIS_HOST" 0 "Redis Host")
+USER_DB=$(get_secure_value "USER_DB" "DB_USER" 0 "Database User")
+NAME_DB=$(get_secure_value "NAME_DB" "DB_NAME" 0 "Database Name")
+HOST_DB=$(get_secure_value "HOST_DB" "DB_HOST" 0 "Database Host")
+PORT_DB=$(get_secure_value "PORT_DB" "DB_PORT" 0 "Database Port")
+REDIS_URL=$(get_secure_value "REDIS_URL" "REDIS_HOST" 0 "Redis Host")
 REDIS_PORT=$(get_secure_value "REDIS_PORT" "REDIS_PORT" 0 "Redis Port")
-APP_ENV=$(get_secure_value "ENV" "NODE_ENV" 0 "Application Environment")
+APP_ENV=$(get_secure_value "Env" "NODE_ENV" 0 "Application Environment")
 APP_PORT=$(get_secure_value "PORT" "APP_PORT" 0 "Application Port")
 
 # PostgreSQL password para el secret separado
@@ -124,7 +128,7 @@ metadata:
   labels:
     app: go-api
     generated-by: script
-    created: $(date -Iseconds)
+    created: $(date -I)
     source: env-file
 type: Opaque
 data:
@@ -150,7 +154,7 @@ metadata:
   labels:
     app: postgres
     generated-by: script
-    created: $(date -Iseconds)
+    created: $(date -I)
     source: env-file
 type: Opaque
 data:
@@ -180,13 +184,13 @@ data:
   SERVER_PORT: "$APP_PORT"
   
   # Database Configuration
-  DB_HOST: "$DB_HOST"
-  DB_PORT: "$DB_PORT"
-  DB_USER: "$DB_USER"
-  DB_NAME: "$DB_NAME"
+  HOST_DB: "$HOST_DB"
+  PORT_DB: "$PORT_DB"
+  USER_DB: "$USER_DB"
+  NAME_DB: "$NAME_DB"
   
   # Redis Configuration
-  REDIS_HOST: "$REDIS_HOST"
+  REDIS_URL: "$REDIS_URL"
   REDIS_PORT: "$REDIS_PORT"
   
   # JWT Configuration
@@ -214,16 +218,16 @@ APP_ENV: $APP_ENV
 APP_PORT: $APP_PORT
 
 ## Database Configuration
-DB_HOST: $DB_HOST
-DB_PORT: $DB_PORT  
-DB_USER: $DB_USER
-DB_NAME: $DB_NAME
+HOST_DB: $HOST_DB
+PORT_DB: $PORT_DB  
+USER_DB: $USER_DB
+NAME_DB: $NAME_DB
 DB_PASSWORD: 
   Length: ${#DB_PASSWORD}
   Hash: $DB_PASSWORD_HASH
 
 ## Redis Configuration
-REDIS_HOST: $REDIS_HOST
+REDIS_URL: $REDIS_URL
 REDIS_PORT: $REDIS_PORT
 REDIS_PASSWORD:
   Length: ${#REDIS_PASSWORD}

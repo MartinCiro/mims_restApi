@@ -109,12 +109,12 @@ spec:
   - from:
     - podSelector: {}  # Todos los pods en el namespace
     ports:
-    - port: 8080
+    - port: 4000
       protocol: TCP
   # Permitir entrada desde el mundo exterior (a través del Service)
   - from:
     - ipBlock:
         cidr: 0.0.0.0/0  # O restringir a IPs específicas
     ports:
-    - port: 8080
+    - port: 4000  
       protocol: TCP

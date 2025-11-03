@@ -32,31 +32,31 @@ spec:
             configMapKeyRef:
               name: go-api-config
               key: APP_PORT
-        - name: DB_HOST
+        - name: HOST_DB
           valueFrom:
             configMapKeyRef:
               name: go-api-config
-              key: DB_HOST
-        - name: DB_PORT
+              key: HOST_DB
+        - name: PORT_DB
           valueFrom:
             configMapKeyRef:
               name: go-api-config
-              key: DB_PORT
-        - name: DB_USER
+              key: PORT_DB
+        - name: USER_DB
           valueFrom:
             configMapKeyRef:
               name: go-api-config
-              key: DB_USER
-        - name: DB_NAME
+              key: USER_DB
+        - name: NAME_DB
           valueFrom:
             configMapKeyRef:
               name: go-api-config
-              key: DB_NAME
-        - name: REDIS_HOST
+              key: NAME_DB
+        - name: REDIS_URL
           valueFrom:
             configMapKeyRef:
               name: go-api-config
-              key: REDIS_HOST
+              key: REDIS_URL
         - name: REDIS_PORT
           valueFrom:
             configMapKeyRef:
@@ -87,9 +87,9 @@ spec:
               
         # Variables calculadas
         - name: DB_URL
-          value: "postgresql://$(DB_USER):$(PASS_DB)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=disable"
+          value: "postgresql://$(USER_DB):$(PASS_DB)@$(HOST_DB):$(PORT_DB)/$(NAME_DB)?sslmode=disable"
         - name: REDIS_URL
-          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)"
+          value: "redis://:$(REDIS_PASSWORD)@$(REDIS_URL):$(REDIS_PORT)"
 
         resources:
           requests:
