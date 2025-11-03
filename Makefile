@@ -4,7 +4,7 @@
         port-forward exec-shell describe debug help generate-secrets verify-secrets deploy-secure
 
 # Variables
-APP_NAME ?= my-go-api
+APP_NAME ?= go-api
 APP_IMAGE ?= $(APP_NAME):latest
 K8S_NAMESPACE ?= default
 MANIFESTS_DIR ?= manifests
@@ -58,6 +58,7 @@ deploy:
 	@echo "🚀 Deploying to Kubernetes..."
 	@echo "=== Creating volumes... ==="
 	kubectl apply -f $(MANIFESTS_DIR)/shared/volumes.yaml
+	kubectl apply -f $(MANIFESTS_DIR)/shared/storageclass.yaml
 	@echo "=== Creating secrets... ==="
 	kubectl apply -f $(MANIFESTS_DIR)/shared/secrets.yaml
 	kubectl apply -f $(MANIFESTS_DIR)/postgres/secret.yaml
