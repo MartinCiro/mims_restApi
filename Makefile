@@ -57,8 +57,7 @@ deploy-dry-run:
 deploy:
 	@echo "🚀 Deploying to Kubernetes..."
 	@echo "=== Creating volumes... ==="
-	kubectl apply -f $(MANIFESTS_DIR)/shared/volumes.yaml
-	kubectl apply -f $(MANIFESTS_DIR)/shared/storageclass.yaml
+	kubectl apply -f $(MANIFESTS_DIR)/shared/
 	@echo "=== Creating secrets... ==="
 	kubectl apply -f $(MANIFESTS_DIR)/shared/secrets.yaml
 	kubectl apply -f $(MANIFESTS_DIR)/postgres/secret.yaml

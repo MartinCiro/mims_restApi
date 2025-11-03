@@ -206,6 +206,57 @@ HTTP Request → Routes → Middlewares → Handlers → Services → Ports → 
 HTTP Response ← Handlers ← Services ← Ports ← Adapters ← BD/Redis
 ```
 
+## ⚒️ Utilidades
+
+### 🔐 Generar secretos 
+```bash
+make generate-secrets
+```
+
+### 🗃️ Ver contenido del Secret llamado "app-secrets"
+```bash
+kubectl get secret app-secrets -o yaml
+```
+
+### ⚙️ Aplicar archivos de configuración
+```bash
+kubectl apply -f manifests/go-api/configmap.yaml
+```
+
+### 🔄 Reiniciar cluster
+```bash
+kubectl rollout restart deployment/go-api-deployment
+```
+
+### ✅ Ver estado pod
+
+```bash
+kubectl get pods -w
+```
+
+### ⏳ Validar pods pendientes
+
+```bash
+kubectl describe pod postgres-deployment-xxxxx
+```
+
+### 🗑️ Eliminar PVs
+
+```bash
+kubectl delete pv postgres-prod-pv redis-prod-pv
+```
+
+### 📄 Logs en tiempo real
+```bash
+kubectl logs -f go-api-deployment-xxxxx
+```
+
+### 🖥️ Monitorear y filtrar los pods que tengan la etiqueta app=go-api
+
+```bash
+kubectl get pods -l app=go-api -w
+```
+
 ## 📋 Cambiar el Método de Autenticación (Ejemplo Email)
 
 ### **Archivos a Modificar**
