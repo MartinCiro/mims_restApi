@@ -12,30 +12,11 @@ export default class UsuariosAdapter implements UsuariosPort {
 
   async crearUsuarios(usuarioData: UsuarioData) {
     try {
-      const fechaNacimiento = new Date(usuarioData.fecha_nacimiento);
-      const fechaRegistro = new Date();
-
-      // Obtener o crear la fecha de nacimiento
-      const fechaNacimientoId = await prisma.fecha.upsert({
-        where: { fecha: fechaNacimiento },
-        update: {},
-        create: { fecha: fechaNacimiento },
-        select: { id: true }
-      });
-
-      // Obtener o crear la fecha de registro
-      const fechaRegistroId = await prisma.fecha.upsert({
-        where: { fecha: fechaRegistro },
-        update: {},
-        create: { fecha: fechaRegistro },
-        select: { id: true }
-      });
-
       // Obtener o crear estado "Activo"
       const estado = await prisma.estado.upsert({
-        where: { nombre: 'Activo' },
+        where: { nombre_estado: 'Activo' },
         update: {},
-        create: { nombre: 'Activo' },
+        create: { nombre_estado: 'Activo', descripcion: 'Usuario activo' },
         select: { id: true }
       });
 
@@ -52,17 +33,20 @@ export default class UsuariosAdapter implements UsuariosPort {
       } else {
         // Rol invitado
         const rolInvitado = await prisma.rol.upsert({
-          where: { nombre: 'Invitado' },
+          where: { nombre_rol: 'Invitado' },
           update: {},
-          create: { nombre: 'Invitado' },
+          create: {
+            nombre_rol: 'Invitado',
+            descripcion: 'Rol para usuarios invitados'
+          },
           select: { id: true }
         });
 
         const permisoLee = await prisma.permiso.upsert({
-          where: { nombre: 'anuncios:Lee' },
+          where: { nombre_permiso: 'anuncios:Lee' },
           update: {},
           create: {
-            nombre: 'anuncios:Lee',
+            nombre_permiso: 'anuncios:Lee',
             descripcion: 'Permiso de solo lectura en anuncios'
           },
           select: { id: true }
@@ -91,25 +75,31 @@ export default class UsuariosAdapter implements UsuariosPort {
       }
 
       // Encriptar la contraseña
-      const user = new Usuario(usuarioData.numero_documento, usuarioData.passwd);
+      const user = new Usuario(
+        usuarioData.nom_user,
+        usuarioData.passwd,
+        idRol,
+        estado.id
+      );
 
       // Crear el usuario
       const nuevoUsuario = await prisma.usuario.create({
         data: {
           documento: usuarioData.numero_documento,
           nombres: usuarioData.nombres,
-          apellido: usuarioData.apellido,
-          email: usuarioData.email,
-          info_perfil: usuarioData.info_perfil,
-          num_contacto: usuarioData.numero_contacto,
-          nom_user: usuarioData.nom_user,
-          id_fecha_nacimiento: fechaNacimientoId.id,
-          id_fecha_registro: fechaRegistroId.id,
+          apellidos: usuarioData.apellido,
+          username: usuarioData.nom_user,
           pass: user.getEncryptedPassword(),
-          estado_id: estado.id,
+          id_estado: estado.id,
           id_rol: idRol
         },
-        select: { documento: true }
+        select: {
+          id: true,
+          documento: true,
+          nombres: true,
+          apellidos: true,
+          username: true
+        }
       });
 
       return nuevoUsuario;
@@ -147,26 +137,17 @@ export default class UsuariosAdapter implements UsuariosPort {
       const usuarios = await prisma.usuario.findMany({
         select: {
           nombres: true,
-          apellido: true,
+          apellidos: true,
           documento: true,
-          email: true,
-          info_perfil: true,
-          num_contacto: true,
-          nom_user: true,
-          fecha_nacimiento: {
-            select: { fecha: true }
-          },
-          fecha_registro: {
-            select: { fecha: true }
-          },
+          username: true,
           rol: {
             select: {
-              nombre: true,
+              nombre_rol: true, // Cambiado de 'nombre' a 'nombre_rol'
               rolXPermiso: {
                 select: {
                   permiso: {
                     select: {
-                      nombre: true
+                      nombre_permiso: true // Cambiado de 'nombre' a 'nombre_permiso'
                     }
                   }
                 }
@@ -174,7 +155,7 @@ export default class UsuariosAdapter implements UsuariosPort {
             }
           },
           estado: {
-            select: { nombre: true }
+            select: { nombre_estado: true } // Cambiado de 'nombre' a 'nombre_estado'
           }
         }
       });
@@ -188,27 +169,26 @@ export default class UsuariosAdapter implements UsuariosPort {
       }
 
       return usuarios.map((usuario) => {
-        const permisosPlano = usuario.rol.rolXPermiso.map((permiso) => permiso.permiso.nombre);
+        const permisosPlano = usuario.rol.rolXPermiso.map((rp) => rp.permiso.nombre_permiso);
         const permisosAgrupados = permisosPlano.reduce((grupos: Record<string, string[]>, permiso: string) => {
-          const [categoria] = permiso.split(':');
+          const [categoria, accion] = permiso.split(':');
+          if (!categoria || !accion) return grupos; // Validación para evitar errores
+
           if (!grupos[categoria]) grupos[categoria] = [];
-          grupos[categoria].push(permiso.split(':')[1]);
+          grupos[categoria].push(accion);
           return grupos;
         }, {});
 
         return {
           nombres: usuario.nombres,
-          apellido: usuario.apellido,
-          estado: usuario.estado.nombre,
-          rol: usuario.rol.nombre,
+          apellidos: usuario.apellidos, // Cambiado de 'apellido' a 'apellidos'
+          estado: usuario.estado.nombre_estado, // Cambiado a 'nombre_estado'
+          rol: usuario.rol.nombre_rol, // Cambiado a 'nombre_rol'
           documento: usuario.documento,
-          email: usuario.email,
-          info_perfil: usuario.info_perfil,
-          num_contacto: usuario.num_contacto,
-          nom_user: usuario.nom_user,
-          fecha_nacimiento: usuario.fecha_nacimiento?.fecha,
-          fecha_registro: usuario.fecha_registro?.fecha,
+          username: usuario.username, // Cambiado de 'nom_user' a 'username'
           permisos: permisosAgrupados
+          // Nota: Los siguientes campos no existen en tu modelo Prisma actual:
+          // email, info_perfil, num_contacto, fecha_nacimiento, fecha_registro
         };
       });
     } catch (error: any) {
@@ -228,10 +208,10 @@ export default class UsuariosAdapter implements UsuariosPort {
           documento: true,
           nombres: true,
           estado: {
-            select: { nombre: true }
+            select: { nombre_estado: true } // Cambiado de 'nombre' a 'nombre_estado'
           },
           rol: {
-            select: { nombre: true }
+            select: { nombre_rol: true } // Cambiado de 'nombre' a 'nombre_rol'
           }
         }
       });
@@ -247,8 +227,8 @@ export default class UsuariosAdapter implements UsuariosPort {
       return {
         id: usuario.documento,
         nombres: usuario.nombres,
-        estado_usuario: usuario.estado.nombre,
-        rol: usuario.rol.nombre
+        estado_usuario: usuario.estado.nombre_estado, // Cambiado a 'nombre_estado'
+        rol: usuario.rol.nombre_rol // Cambiado a 'nombre_rol'
       };
     } catch (error: any) {
       throw {
@@ -263,6 +243,11 @@ export default class UsuariosAdapter implements UsuariosPort {
     try {
       const usuario = await prisma.usuario.delete({
         where: { documento: usuarioData.numero_documento.toString() },
+        select: {
+          documento: true,
+          nombres: true,
+          apellidos: true
+        }
       });
 
       return {
@@ -274,10 +259,20 @@ export default class UsuariosAdapter implements UsuariosPort {
       if (error.code === "P2025") {
         throw {
           ok: false,
-          status_cod: 409,
+          status_cod: 404, // Cambiado a 404 (Not Found) que es más apropiado
           data: "El usuario solicitado no existe en la base de datos",
         };
       }
+
+      // Manejar error de violación de clave foránea
+      if (error.code === "P2003") {
+        throw {
+          ok: false,
+          status_cod: 409,
+          data: "No se puede eliminar el usuario porque tiene registros relacionados",
+        };
+      }
+
       throw {
         ok: false,
         status_cod: 400,
@@ -288,28 +283,53 @@ export default class UsuariosAdapter implements UsuariosPort {
 
   async actualizaUsuario(usuarioData: UsuarioDataUpdate) {
     try {
-      const { numero_documento, estado_id, id_rol, fecha_nacimiento, numero_contacto, ...updates } = usuarioData;
+      const { numero_documento, ...updates } = usuarioData;
 
-      // Convertir valores numéricos si están presentes
-      const dataToUpdate: Prisma.UsuarioUpdateInput = {
-        ...updates,
-        ...(numero_contacto !== undefined && { num_contacto: numero_contacto }),
-        ...(estado_id !== undefined && { estado: { connect: { id: Number(estado_id) } } }),
-        ...(id_rol !== undefined && { rol: { connect: { id: Number(id_rol) } } }),
-        ...(fecha_nacimiento !== undefined && { 
-          fecha_nacimiento: {
-            update: { fecha: fecha_nacimiento }
-          } 
-        })
-      };
+      // Preparar datos para actualización según tu modelo Prisma
+      const dataToUpdate: any = {};
+
+      // Mapear campos básicos
+      if (updates.nombres !== undefined) dataToUpdate.nombres = updates.nombres;
+      if (updates.apellido !== undefined) dataToUpdate.apellidos = updates.apellido;
+      if (updates.nom_user !== undefined) dataToUpdate.username = updates.nom_user;
+      if (updates.passwd !== undefined) {
+        // Encriptar nueva contraseña si se proporciona
+        const user = new Usuario(updates.nom_user || '', updates.passwd);
+        dataToUpdate.pass = user.getEncryptedPassword();
+      }
+      if (updates.email !== undefined) {
+        // Nota: El campo email no existe en tu modelo actual
+        // dataToUpdate.email = updates.email;
+        console.warn('Campo email no está disponible en el modelo actual');
+      }
+
+      // Manejar relaciones
+      if (updates.estado_id !== undefined) {
+        dataToUpdate.id_estado = Number(updates.estado_id);
+      }
+
+      if (updates.id_rol !== undefined) {
+        dataToUpdate.id_rol = Number(updates.id_rol);
+      }
+
+      // Nota: Los siguientes campos no existen en tu modelo Prisma actual:
+      // - fecha_nacimiento
+      // - numero_contacto
 
       const usuarioActualizado = await prisma.usuario.update({
         where: { documento: numero_documento.toString() },
         data: dataToUpdate,
-        include: {
-          fecha_nacimiento: true,
-          rol: true,
-          estado: true
+        select: {
+          documento: true,
+          nombres: true,
+          apellidos: true,
+          username: true,
+          rol: {
+            select: { nombre_rol: true }
+          },
+          estado: {
+            select: { nombre_estado: true }
+          }
         }
       });
 
@@ -319,14 +339,34 @@ export default class UsuariosAdapter implements UsuariosPort {
         usuario: usuarioActualizado,
       };
     } catch (error: any) {
-      const validacion = validarExistente(error.code, error.meta?.target);
-      if (!validacion.ok) {
+      // Manejar usuario no encontrado
+      if (error.code === "P2025") {
         throw {
-          ok: validacion.ok,
-          status_cod: 409,
-          data: validacion.data,
+          ok: false,
+          status_cod: 404,
+          data: "El usuario no existe en la base de datos",
         };
       }
+
+      // Manejar violación de constraints únicos
+      if (error.code === "P2002") {
+        const campo = error.meta?.target?.[0] || 'campo';
+        throw {
+          ok: false,
+          status_cod: 409,
+          data: `El ${campo} ya está en uso por otro usuario`,
+        };
+      }
+
+      // Manejar relaciones no existentes
+      if (error.code === "P2003") {
+        throw {
+          ok: false,
+          status_cod: 409,
+          data: "El rol o estado asignado no existe",
+        };
+      }
+
       throw {
         ok: false,
         status_cod: 400,

@@ -20,6 +20,7 @@ export class ActualizarUsuarioDto {
   @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'Debe ser un número' })
   readonly id_rol!: number
 
-  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'Debe ser un número' })
-  readonly id!: number
+  @IsNotEmpty({ message: 'El identificador de usuario es obligatorio' })
+  @IsString({ message: 'El texto en identificador de usuario no es valido' })
+  readonly numero_documento!: string
 }

@@ -7,7 +7,6 @@ import { RolModule } from '@api/roles/rol.module';
 import { AuthModule } from '@api/auth/auth.module';
 import { EstadoModule } from '@api/estados/estado.module';
 import { PermisoModule } from '@api/permisos/permiso.module';
-import { UsuarioModule } from '@api/usuarios/usuario.module';
 
 @Module({
   imports: [
@@ -15,7 +14,6 @@ import { UsuarioModule } from '@api/usuarios/usuario.module';
       rootPath: join(__dirname, '..', 'public'),
       serveRoot: '/api-docs'
     }),
-    UsuarioModule,
     PermisoModule,
     RolModule,
     EstadoModule,

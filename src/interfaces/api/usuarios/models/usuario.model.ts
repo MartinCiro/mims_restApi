@@ -3,12 +3,8 @@ export interface UsuarioData {
   id_rol?: number;
   apellido: string;
   numero_documento: string;
-  email: string;
   estado_id?: number;
-  info_perfil?: string;
   nom_user: string;
-  numero_contacto?: string;
-  fecha_nacimiento: string;
   passwd: string;
 }
 

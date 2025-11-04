@@ -1,6 +1,7 @@
-import { IsNumber } from 'class-validator';
+import { IsNotEmpty, IsString} from 'class-validator';
 
 export class EliminarUsuarioDto {
-  @IsNumber({ allowNaN: false, allowInfinity: false }, { message: 'Debe ser un número' })
-    id!: string;
+  @IsNotEmpty({ message: 'El identificador de usuario es obligatorio' })
+  @IsString({ message: 'El texto en identificador de usuario no es valido' })
+  numero_documento!: string;
 }
