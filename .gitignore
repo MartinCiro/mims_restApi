@@ -13,3 +13,10 @@ conexion_whatsapp.go
 node_modules
 *lock*
 secret*
+dist
+build
+coverage
+.DS_Store
+.vscode
+.idea
+.env_*
