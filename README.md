@@ -213,6 +213,12 @@ HTTP Response ← Handlers ← Services ← Ports ← Adapters ← BD/Redis
 make generate-secrets
 ```
 
+### 🚪 Ingresar al pod de PostgreSQL
+
+```bash
+kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- bash
+```
+
 ### 🗃️ Ver contenido del Secret llamado "app-secrets"
 ```bash
 kubectl get secret app-secrets -o yaml
