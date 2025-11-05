@@ -57,6 +57,7 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 
 	// Health checks (EXPLÍCITAS - sin patrones que conflictuen)
 	mux.HandleFunc("GET /{$}", common_handler.HealthHandler) // {$} para coincidir exactamente con "/"
+	mux.HandleFunc("GET /health", common_handler.HealthHandler)
 	mux.HandleFunc("GET /ready", common_handler.ReadyHandler(app.DB, app.RedisCache))
 
 	// Autenticación (públicas)

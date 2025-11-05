@@ -219,6 +219,12 @@ make generate-secrets
 kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- bash
 ```
 
+### Recrear, desplegar y ver logs
+
+```bash
+make build; docker save go-api:latest -o go-api.tar; sudo ctr -n k8s.io images import go-api.tar; rm go-api.tar; make deploy; kubectl rollout restart deployment/go-api-deployment; kubectl logs -f  $(kubectl get pod -l app=go-api -o custom-columns=NAME:.metadata.name --no-headers)
+```
+
 ### 🗃️ Ver contenido del Secret llamado "app-secrets"
 ```bash
 kubectl get secret app-secrets -o yaml

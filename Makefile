@@ -12,6 +12,7 @@ MANIFESTS_DIR ?= manifests
 ## --- Desarrollo Local ---
 build:
 	@echo "🔨 Building Docker image..."
+	-docker rmi $(APP_IMAGE) 2>/dev/null || true
 	docker build -t $(APP_IMAGE) .
 
 build-local: build

@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,10 +24,12 @@ func main() {
 	} else {
 		logger.SetupDevelopment()
 	}
+
+	// ✅ CORRECCIÓN: Usar string directo en lugar de http.LocalAddrContextKey
 	logger.Info("iniciando aplicación",
 		"version", "1.0.0",
 		"environment", cfg.Env,
-		"server_address", http.LocalAddrContextKey)
+		"server_address", ":"+cfg.Port) // ← CORREGIDO
 
 	// Inicializar aplicación
 	application := app.NewApp()
@@ -35,6 +37,11 @@ func main() {
 		logger.Fatal("fallo al inicializar aplicación", "error", err)
 	}
 	defer application.Shutdown()
+
+	// ✅ VERIFICAR que la aplicación esté saludable antes de iniciar servidor
+	if err := application.HealthCheck(); err != nil {
+		logger.Fatal("health check falló antes de iniciar servidor", "error", err)
+	}
 
 	// Configurar servidor HTTP
 	server := &http.Server{
@@ -45,31 +52,62 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
+	// Canal para errores del servidor
+	serverErr := make(chan error, 1)
+
 	// Iniciar servidor en goroutine
 	go func() {
 		logger.Info("iniciando servidor HTTP", "address", server.Addr)
-
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logger.Fatal("❌ Error iniciando servidor: %v", err)
+			serverErr <- err
+			logger.Error("error en servidor HTTP", "error", err)
 		}
 	}()
 
-	// Esperar señal de interrupción para graceful shutdown
+	// ✅ HEALTH CHECK INMEDIATO - Verificar que el servidor responde
+	time.Sleep(1 * time.Second) // Dar tiempo a que el servidor arranque
+	if err := checkServerHealth(cfg.Port); err != nil {
+		logger.Fatal("servidor no responde a health checks", "error", err)
+	}
+
+	logger.Info("✅ Servidor iniciado y respondiendo correctamente")
+
+	// Esperar señal de interrupción o error del servidor
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	<-stop
 
-	log.Println("🛑 Recibida señal de apagado, cerrando servidor...")
+	select {
+	case <-stop:
+		logger.Info("🛑 Recibida señal de apagado, cerrando servidor...")
+	case err := <-serverErr:
+		logger.Error("❌ Error en el servidor", "error", err)
+	}
 
-	// Graceful shutdown con timeout
+	// Graceful shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("⚠️ Error durante shutdown: %v", err)
+		logger.Error("⚠️ Error durante shutdown", "error", err)
 	} else {
-		log.Println("✅ Servidor cerrado correctamente")
+		logger.Info("✅ Servidor cerrado correctamente")
 	}
+}
+
+// ✅ FUNCIÓN NUEVA: Verificar que el servidor responde
+func checkServerHealth(port string) error {
+	// Intentar conectarse al health check
+	resp, err := http.Get("http://localhost:" + port + "/")
+	if err != nil {
+		return fmt.Errorf("no se pudo conectar al servidor: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("health check retornó status: %d", resp.StatusCode)
+	}
+
+	return nil
 }
 
 // responseWriter wrapper para interceptar status code
