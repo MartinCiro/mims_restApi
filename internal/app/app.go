@@ -159,6 +159,7 @@ func (a *App) initializeServices() error {
 		usuarioRepo,
 		rolRepo,
 		estadoRepo,
+		a.Config,
 	)
 
 	a.LoginService = login.NewLoginService(

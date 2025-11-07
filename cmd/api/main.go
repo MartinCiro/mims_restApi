@@ -29,7 +29,7 @@ func main() {
 	logger.Info("iniciando aplicación",
 		"version", "1.0.0",
 		"environment", cfg.Env,
-		"server_address", ":"+cfg.Port) // ← CORREGIDO
+		"server_address", ":"+cfg.Port)
 
 	// Inicializar aplicación
 	application := app.NewApp()

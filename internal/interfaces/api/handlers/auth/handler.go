@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 
 	"api_go/internal/core/auth"
 	"api_go/internal/interfaces/api/common"
@@ -37,6 +38,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	common.WriteJSONResponse(w, *response, 200)
 }
 
+// internal/interfaces/api/handlers/auth/handler.go
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req auth.RegisterRequest
 
@@ -69,10 +71,19 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	response, err := h.authService.RegisterUser(ctx, req, currentUser)
 	if err != nil {
-		errorResponse := common.NewErrorResponse(400, err.Error())
-		common.WriteJSONResponse(w, errorResponse, 400)
+		// Manejar errores específicos con diferentes códigos de estado
+		statusCode := 400
+		if strings.Contains(err.Error(), "Ha ocurrido un error en el servidor") {
+			statusCode = 500
+		} else if strings.Contains(err.Error(), "no tiene permisos") {
+			statusCode = 403
+		}
+
+		errorResponse := common.NewErrorResponse(statusCode, err.Error())
+		common.WriteJSONResponse(w, errorResponse, statusCode)
 		return
 	}
 
-	common.WriteJSONResponse(w, response, 201)
+	successResponse := common.NewSuccessResponse(response)
+	common.WriteJSONResponse(w, successResponse, successResponse.Code)
 }

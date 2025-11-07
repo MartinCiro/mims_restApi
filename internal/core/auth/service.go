@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
+	"api_go/config"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/infrastructure/redis"
 	"api_go/internal/interfaces/api/common"
+	"api_go/pkg/logger"
 	"api_go/pkg/utils"
 )
 
@@ -22,6 +25,7 @@ type AuthService struct {
 	userRepo        UserRepositoryPort
 	rolRepo         RolRepositoryPort
 	estadoRepo      EstadoRepositoryPort
+	config          *config.Config
 }
 
 func NewAuthService(
@@ -32,6 +36,7 @@ func NewAuthService(
 	userRepo UserRepositoryPort,
 	rolRepo RolRepositoryPort,
 	estadoRepo EstadoRepositoryPort,
+	config *config.Config,
 ) *AuthService {
 	return &AuthService{
 		authPort:        authPort,
@@ -41,6 +46,7 @@ func NewAuthService(
 		userRepo:        userRepo,
 		rolRepo:         rolRepo,
 		estadoRepo:      estadoRepo,
+		config:          config,
 	}
 }
 
@@ -256,17 +262,13 @@ type RegisterRequest struct {
 
 // RegisterResponse define la respuesta del registro
 type RegisterResponse struct {
-	Token   string `json:"token"`
-	Usuario struct {
-		ID     int    `json:"id"`
-		Nombre string `json:"nombre"`
-		Rol    string `json:"rol"`
-	} `json:"usuario"`
+	Token     string `json:"token"`
+	ExpiresIn int    `json:"expires_in"`
 }
 
 // RegisterUser registra un nuevo usuario
 func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, currentUser *User) (*RegisterResponse, error) {
-	log.Println("🔄 Iniciando registro de usuario", "username", req.Username, "email", req.Email)
+	logger.Info("Iniciando registro de usuario", "username", req.Username, "email", req.Email)
 
 	var rolNombre string
 	var estadoNombre string = "activo"
@@ -290,8 +292,6 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 		rolNombre = "invitado"
 	}
 
-	log.Println("🔍 Configurando rol y estado", "rol", rolNombre, "estado", estadoNombre)
-
 	// Buscar ID del rol por nombre
 	rolID, err := s.rolRepo.FindRolIDByName(ctx, rolNombre)
 	if err != nil {
@@ -310,8 +310,6 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 		return nil, fmt.Errorf("estado '%s' no encontrado", estadoNombre)
 	}
 
-	log.Println("✅ IDs encontrados", "rolID", rolID, "estadoID", estadoID)
-
 	// Crear nuevo usuario
 	newUser, err := NewUsuario(req.Username, req.Password, &rolID, &estadoID)
 	if err != nil {
@@ -321,10 +319,18 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 	// Guardar en base de datos
 	userID, err := s.userRepo.CreateUser(ctx, newUser, req.Email)
 	if err != nil {
-		return nil, fmt.Errorf("error creando usuario: %v", err)
+		// Verificar si es error de duplicado
+		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+			return nil, fmt.Errorf("El usuario ya existe, inicie sesión para continuar")
+		}
+
+		logger.Error("No se pudo crear el usuario", "error", err)
+
+		// Para cualquier otro error
+		return nil, fmt.Errorf("Ha ocurrido un error en el servidor, contacte al administrador")
 	}
 
-	log.Println("✅ Usuario creado en BD", "userID", userID)
+	logger.Info("✅ Usuario creado en BD", "userID", userID)
 
 	// Obtener usuario completo con permisos
 	user, err := s.authPort.RetrieveUserByID(ctx, userID)
@@ -342,23 +348,15 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 		return nil, fmt.Errorf("error generando token: %v", err)
 	}
 
-	log.Println("✅ Registro completado exitosamente", "userID", userID, "username", user.Username)
+	logger.Info("✅ Registro completado exitosamente", "userID", userID, "username", user.Username)
 
 	// Construir respuesta
-	response := RegisterResponse{
-		Token: token,
-		Usuario: struct {
-			ID     int    `json:"id"`
-			Nombre string `json:"nombre"`
-			Rol    string `json:"rol"`
-		}{
-			ID:     user.ID,
-			Nombre: user.Username,
-			Rol:    rolNombre,
-		},
+	response := &RegisterResponse{
+		Token:     token,
+		ExpiresIn: s.config.JWTExpireTime,
 	}
 
-	return &response, nil
+	return response, nil
 }
 
 // hasPermission verifica si el usuario tiene un permiso específico
