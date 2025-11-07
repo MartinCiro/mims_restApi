@@ -44,6 +44,7 @@ func setupStaticFiles(mux *http.ServeMux) {
 }
 
 // setupAllRoutes configura todas las rutas (públicas y protegidas)
+// En la función setupAllRoutes, modificar:
 func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	// Inicializar middlewares
 	authMiddleware := middlewares.NewAuthMiddleware(app.JWTService)
@@ -51,17 +52,19 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	// Inicializar handlers
 	estadosHandler := estados.NewEstadosHandler(app.EstadoService)
 	loginHandler := login.NewLoginHandler(app.LoginService)
+	authHandler := auth.NewAuthHandler(app.AuthService) // NUEVO
 	profileHandler := auth.NewProfileHandler(app.AuthService)
 
 	// ========== RUTAS PÚBLICAS ==========
 
-	// Health checks (EXPLÍCITAS - sin patrones que conflictuen)
-	mux.HandleFunc("GET /{$}", common_handler.HealthHandler) // {$} para coincidir exactamente con "/"
+	// Health checks
+	mux.HandleFunc("GET /{$}", common_handler.HealthHandler)
 	mux.HandleFunc("GET /health", common_handler.HealthHandler)
 	mux.HandleFunc("GET /ready", common_handler.ReadyHandler(app.DB, app.RedisCache))
 
 	// Autenticación (públicas)
 	mux.HandleFunc("POST /api/auth/login", loginHandler.Login)
+	mux.Handle("POST /api/auth/register", authMiddleware.OptionalAuth(http.HandlerFunc(authHandler.Register))) // NUEVO
 
 	// ========== RUTAS PROTEGIDAS ==========
 
@@ -79,81 +82,6 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	protected.HandleFunc("GET /api/profile", profileHandler.GetProfile)
 
 	// Aplicar middleware de autenticación a las rutas protegidas
-	// Usar patrones específicos para evitar conflictos
-	mux.Handle("/api/estados", authMiddleware.Handler(protected))
-	mux.Handle("/api/estados/", authMiddleware.Handler(protected))
-	mux.Handle("/api/profile", authMiddleware.Handler(protected))
-}
-
-func setupProtectedRoutes(mux *http.ServeMux, app *app.App) {
-	// Inicializar middlewares
-	authMiddleware := middlewares.NewAuthMiddleware(app.JWTService)
-	permissionsMiddleware := middlewares.NewPermissionsMiddleware(app.RedisCache)
-
-	// Inicializar handlers
-	estadosHandler := estados.NewEstadosHandler(app.EstadoService)
-	profileHandler := auth.NewProfileHandler(app.AuthService)
-
-	// Grupo de rutas protegidas
-	protected := http.NewServeMux()
-
-	// ✅ RUTAS ACTUALIZADAS CON HELPER - MÁS LEGIBLE
-	protected.HandleFunc("GET /api/estados",
-		ProtectedWithPermissions(
-			authMiddleware,
-			permissionsMiddleware,
-			estadosHandler.ObtenerEstados,
-			middlewares.PermissionEstadosListar,
-		),
-	)
-
-	protected.HandleFunc("GET /api/estados/{id}",
-		ProtectedWithPermissions(
-			authMiddleware,
-			permissionsMiddleware,
-			estadosHandler.ObtenerEstadoXid,
-			middlewares.PermissionEstadosVer,
-		),
-	)
-
-	protected.HandleFunc("POST /api/estados",
-		ProtectedWithPermissions(
-			authMiddleware,
-			permissionsMiddleware,
-			estadosHandler.CrearEstado,
-			middlewares.PermissionEstadosCrear,
-		),
-	)
-
-	protected.HandleFunc("PUT /api/estados/{id}",
-		ProtectedWithPermissions(
-			authMiddleware,
-			permissionsMiddleware,
-			estadosHandler.ActualizarEstado,
-			middlewares.PermissionEstadosEditar,
-		),
-	)
-
-	protected.HandleFunc("DELETE /api/estados/{id}",
-		ProtectedWithPermissions(
-			authMiddleware,
-			permissionsMiddleware,
-			estadosHandler.EliminarEstado,
-			middlewares.PermissionEstadosEliminar,
-		),
-	)
-
-	// Perfil (solo requiere autenticación, sin permisos específicos)
-	protected.HandleFunc("GET /api/profile",
-		ProtectedWithPermissions(
-			authMiddleware,
-			permissionsMiddleware,
-			profileHandler.GetProfile,
-			nil, // ← Sin permisos requeridos, solo autenticación
-		),
-	)
-
-	// Aplicar middlewares a las rutas
 	mux.Handle("/api/estados", authMiddleware.Handler(protected))
 	mux.Handle("/api/estados/", authMiddleware.Handler(protected))
 	mux.Handle("/api/profile", authMiddleware.Handler(protected))

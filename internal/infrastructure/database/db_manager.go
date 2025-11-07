@@ -18,15 +18,56 @@ func NewDBManager(db *gorm.DB) *DBManager {
 	}
 }
 
-// FindUnique simula prisma.findUnique()
-func (dm *DBManager) FindUnique(ctx context.Context, table string, result interface{}, where map[string]interface{}) error {
+// FindUniqueOptions configuración para FindUnique
+type FindUniqueOptions struct {
+	UseOrderByID bool // Si es true, agrega ORDER BY id, si es false, no agrega ORDER BY
+	OrderBy      string
+	SelectFields []string
+}
+
+// FindUnique simula prisma.findUnique() con opciones mejoradas
+func (dm *DBManager) FindUnique(ctx context.Context, table string, result interface{}, where map[string]interface{}, options ...*FindUniqueOptions) error {
 	query := dm.db.WithContext(ctx).Table(table)
 
+	// Aplicar condiciones WHERE
 	for field, value := range where {
 		query = query.Where(fmt.Sprintf("%s = ?", field), value)
 	}
 
+	// Aplicar opciones si se proporcionan
+	if len(options) > 0 && options[0] != nil {
+		opts := options[0]
+
+		// SELECT fields específicos
+		if len(opts.SelectFields) > 0 {
+			query = query.Select(opts.SelectFields)
+		}
+
+		// ORDER BY
+		if opts.OrderBy != "" {
+			query = query.Order(opts.OrderBy)
+		} else if opts.UseOrderByID {
+			// ORDER BY id solo si se solicita explícitamente
+			query = query.Order("id")
+		}
+		// Si no hay opciones de ORDER BY, no se agrega nada (evita el ORDER BY automático)
+	}
+
 	return query.First(result).Error
+}
+
+// FindUniqueByField busca por un campo específico sin ORDER BY automático
+func (dm *DBManager) FindUniqueByField(ctx context.Context, table string, result interface{}, field string, value interface{}) error {
+	return dm.FindUnique(ctx, table, result, map[string]interface{}{field: value}, &FindUniqueOptions{
+		UseOrderByID: false,
+	})
+}
+
+// FindUniqueByID busca por ID con ORDER BY (comportamiento tradicional)
+func (dm *DBManager) FindUniqueByID(ctx context.Context, table string, result interface{}, id interface{}) error {
+	return dm.FindUnique(ctx, table, result, map[string]interface{}{"id": id}, &FindUniqueOptions{
+		UseOrderByID: true, // Con ORDER BY id
+	})
 }
 
 // FindMany simula prisma.findMany()
@@ -89,6 +130,11 @@ func (dm *DBManager) Include(ctx context.Context, model interface{}, where map[s
 
 func (dm *DBManager) FindWithJoin(ctx context.Context, results interface{}, query string, args ...interface{}) error {
 	return dm.db.WithContext(ctx).Raw(query, args...).Scan(results).Error
+}
+
+// GetDB retorna la instancia de GORM para operaciones directas
+func (dm *DBManager) GetDB() *gorm.DB {
+	return dm.db
 }
 
 // QueryOptions para operaciones avanzadas

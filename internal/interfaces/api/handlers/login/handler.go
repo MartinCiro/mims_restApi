@@ -41,7 +41,6 @@ func (dto *LoginRequestDTO) Validate() error {
 func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Leer el body completo para debug
 	bodyBytes, _ := io.ReadAll(r.Body)
-	fmt.Printf("🔍 Raw Body: %s\n", string(bodyBytes))
 
 	// Resetear el body
 	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))

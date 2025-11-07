@@ -225,6 +225,27 @@ kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- bash
 make build; docker save go-api:latest -o go-api.tar; sudo ctr -n k8s.io images import go-api.tar; rm go-api.tar; make deploy; kubectl rollout restart deployment/go-api-deployment; kubectl logs -f  $(kubectl get pod -l app=go-api -o custom-columns=NAME:.metadata.name --no-headers)
 ```
 
+### Ajustar pods, recrear almacenamiento de datos
+
+
+```bash
+# Detener y limpiar
+kubectl scale deployment postgres-deployment --replicas=0
+kubectl scale deployment redis-deployment --replicas=0
+kubectl delete pvc postgres-pvc redis-pvc
+kubectl delete pv postgres-prod-pv redis-prod-pv
+sudo rm -rf /mnt/k8s-storage/postgres/* /mnt/k8s-storage/redis/*
+
+# Recrear
+kubectl apply -f manifests/shared/local-storage.yaml
+kubectl apply -f manifests/shared/volumes.yaml
+
+# Esperar vinculación y reiniciar
+sleep 30
+kubectl scale deployment postgres-deployment --replicas=1
+kubectl scale deployment redis-deployment --replicas=1
+```
+
 ### 🗃️ Ver contenido del Secret llamado "app-secrets"
 ```bash
 kubectl get secret app-secrets -o yaml

@@ -145,6 +145,7 @@ func (a *App) initializeServices() error {
 	usuarioRepo := repositories.NewUsuarioRepository(dbManager)
 	rolRepo := repositories.NewRolRepository(dbManager)
 	permisoRepo := repositories.NewPermisoRepository(dbManager)
+	estadoRepo := repositories.NewEstadoRepository(dbManager)
 
 	// AuthAdapter coordina los repositorios
 	authAdapter := repositories.NewAuthAdapter(usuarioRepo, rolRepo, permisoRepo)
@@ -155,6 +156,9 @@ func (a *App) initializeServices() error {
 		a.RedisCache,
 		a.JWTService,
 		a.PasswordService,
+		usuarioRepo,
+		rolRepo,
+		estadoRepo,
 	)
 
 	a.LoginService = login.NewLoginService(
@@ -164,10 +168,6 @@ func (a *App) initializeServices() error {
 		a.PasswordService,
 		a.Config,
 	)
-
-	// Servicio de estados
-	estadosAdapter := repositories.NewEstadosAdapter(a.DB, a.RedisCache)
-	a.EstadoService = estados.NewEstadoService(estadosAdapter)
 
 	logger.Info("servicios del core inicializados correctamente")
 	return nil

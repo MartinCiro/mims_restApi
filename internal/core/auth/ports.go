@@ -8,6 +8,21 @@ type AuthPort interface {
 	RetrieveUserByID(ctx context.Context, userID int) (*User, error)
 }
 
+// UserRepositoryPort define el contrato para operaciones de usuario
+type UserRepositoryPort interface {
+	CreateUser(ctx context.Context, usuario *Usuario, email string) (int, error)
+}
+
+// RolRepositoryPort define el contrato para operaciones de roles
+type RolRepositoryPort interface {
+	FindRolIDByName(ctx context.Context, nombre string) (int, error)
+}
+
+// EstadoRepositoryPort define el contrato para operaciones de estados
+type EstadoRepositoryPort interface {
+	FindEstadoIDByName(ctx context.Context, nombre string) (int, error)
+}
+
 // AuthData contiene los datos necesarios para la autenticación
 type AuthData struct {
 	Username string `json:"email"`

@@ -25,11 +25,11 @@ func (r *PermisoRepository) FindByRolID(ctx context.Context, rolID int) ([]strin
 
 	// Usar join explícito
 	query := `
-		SELECT permiso.nombre_permiso
-		FROM permiso 
-		INNER JOIN rol_x_permiso ON permiso.id = rol_x_permiso.id_permiso 
-		WHERE rol_x_permiso.id_rol = ?
-	`
+        SELECT p.nombre_permiso
+        FROM permisos p
+        INNER JOIN rol_x_permisos rp ON p.id = rp.id_permiso 
+        WHERE rp.id_rol = ?
+    `
 
 	err := r.dbManager.FindWithJoin(ctx, &permisosDB, query, rolID)
 	if err != nil {

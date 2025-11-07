@@ -19,6 +19,9 @@ type AuthService struct {
 	redisService    *redis.Cache
 	jwtService      *jwt.JWTService
 	passwordService *utils.PasswordService
+	userRepo        UserRepositoryPort
+	rolRepo         RolRepositoryPort
+	estadoRepo      EstadoRepositoryPort
 }
 
 func NewAuthService(
@@ -26,12 +29,18 @@ func NewAuthService(
 	redisService *redis.Cache,
 	jwtService *jwt.JWTService,
 	passwordService *utils.PasswordService,
+	userRepo UserRepositoryPort,
+	rolRepo RolRepositoryPort,
+	estadoRepo EstadoRepositoryPort,
 ) *AuthService {
 	return &AuthService{
 		authPort:        authPort,
 		redisService:    redisService,
 		jwtService:      jwtService,
 		passwordService: passwordService,
+		userRepo:        userRepo,
+		rolRepo:         rolRepo,
+		estadoRepo:      estadoRepo,
 	}
 }
 
@@ -63,8 +72,6 @@ type ProfileResponse struct {
 	Nombre   string   `json:"nombre"`
 	Rol      string   `json:"rol"`
 	Permisos []string `json:"permisos,omitempty"`
-	// Agrega otros campos que necesites exponer
-	// Email    string   `json:"email,omitempty"`
 }
 
 func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.ResponseBody[LoginResponse], error) {
@@ -237,4 +244,129 @@ func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*commo
 		Code:    200,
 		Data:    profileData,
 	}, nil
+}
+
+// RegisterRequest define la estructura para registro de usuarios
+type RegisterRequest struct {
+	Username  string  `json:"username"`
+	Email     string  `json:"email"`
+	Password  string  `json:"password"`
+	RolNombre *string `json:"rol_nombre,omitempty"` // Opcional para usuarios autenticados
+}
+
+// RegisterResponse define la respuesta del registro
+type RegisterResponse struct {
+	Token   string `json:"token"`
+	Usuario struct {
+		ID     int    `json:"id"`
+		Nombre string `json:"nombre"`
+		Rol    string `json:"rol"`
+	} `json:"usuario"`
+}
+
+// RegisterUser registra un nuevo usuario
+func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, currentUser *User) (*RegisterResponse, error) {
+	log.Println("🔄 Iniciando registro de usuario", "username", req.Username, "email", req.Email)
+
+	var rolNombre string
+	var estadoNombre string = "activo"
+
+	// Determinar rol según el contexto
+	if currentUser != nil {
+		// Usuario autenticado: validar permisos
+		hasPermission := s.hasPermission(currentUser.Permisos, "usuarios.crear")
+		if !hasPermission {
+			return nil, fmt.Errorf("no tiene permisos para crear usuarios")
+		}
+
+		// Usar rol proporcionado o "usuario" por defecto
+		if req.RolNombre != nil {
+			rolNombre = *req.RolNombre
+		} else {
+			rolNombre = "usuario"
+		}
+	} else {
+		// Usuario guest: rol "invitado"
+		rolNombre = "invitado"
+	}
+
+	log.Println("🔍 Configurando rol y estado", "rol", rolNombre, "estado", estadoNombre)
+
+	// Buscar ID del rol por nombre
+	rolID, err := s.rolRepo.FindRolIDByName(ctx, rolNombre)
+	if err != nil {
+		return nil, fmt.Errorf("error buscando rol '%s': %v", rolNombre, err)
+	}
+	if rolID == 0 {
+		return nil, fmt.Errorf("rol '%s' no encontrado", rolNombre)
+	}
+
+	// Buscar ID del estado "activo"
+	estadoID, err := s.estadoRepo.FindEstadoIDByName(ctx, estadoNombre)
+	if err != nil {
+		return nil, fmt.Errorf("error buscando estado '%s': %v", estadoNombre, err)
+	}
+	if estadoID == 0 {
+		return nil, fmt.Errorf("estado '%s' no encontrado", estadoNombre)
+	}
+
+	log.Println("✅ IDs encontrados", "rolID", rolID, "estadoID", estadoID)
+
+	// Crear nuevo usuario
+	newUser, err := NewUsuario(req.Username, req.Password, &rolID, &estadoID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Guardar en base de datos
+	userID, err := s.userRepo.CreateUser(ctx, newUser, req.Email)
+	if err != nil {
+		return nil, fmt.Errorf("error creando usuario: %v", err)
+	}
+
+	log.Println("✅ Usuario creado en BD", "userID", userID)
+
+	// Obtener usuario completo con permisos
+	user, err := s.authPort.RetrieveUserByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error obteniendo usuario creado: %v", err)
+	}
+
+	// Generar token JWT
+	token, err := s.jwtService.GenerateJWT(jwt.JwtPayload{
+		IDUser:   user.ID,
+		Username: user.Username,
+		IDRol:    rolID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error generando token: %v", err)
+	}
+
+	log.Println("✅ Registro completado exitosamente", "userID", userID, "username", user.Username)
+
+	// Construir respuesta
+	response := RegisterResponse{
+		Token: token,
+		Usuario: struct {
+			ID     int    `json:"id"`
+			Nombre string `json:"nombre"`
+			Rol    string `json:"rol"`
+		}{
+			ID:     user.ID,
+			Nombre: user.Username,
+			Rol:    rolNombre,
+		},
+	}
+
+	return &response, nil
+}
+
+// hasPermission verifica si el usuario tiene un permiso específico
+func (s *AuthService) hasPermission(permisos []string, permission string) bool {
+	for _, perm := range permisos {
+		if perm == permission {
+			return true
+		}
+	}
+	return false
 }

@@ -56,7 +56,7 @@ type RolXPermiso struct {
 
 // Usuario model
 type Usuario struct {
-	Documento       string     `gorm:"primaryKey;type:text" json:"documento"`
+	Documento       int        `gorm:"primaryKey" json:"documento"`
 	Nombres         string     `gorm:"type:text;not null" json:"nombres"`
 	Apellido        string     `gorm:"type:text;not null" json:"apellido"`
 	Email           string     `gorm:"type:text;not null;uniqueIndex" json:"email"`

@@ -5,19 +5,25 @@ import (
 )
 
 type Usuario struct {
-	ID        int       `gorm:"primaryKey;column:id"`
-	Nombres   string    `gorm:"column:nombres"`
-	Apellidos string    `gorm:"column:apellidos"`
-	Username  string    `gorm:"column:username;uniqueIndex"`
-	Pass      string    `gorm:"column:pass"`
-	IDRol     int       `gorm:"column:id_rol"`
-	IDEstado  int       `gorm:"column:id_estado"`
-	CreatedAt time.Time `gorm:"column:created_at"`
-	UpdatedAt time.Time `gorm:"column:updated_at"`
+	// ✅ CORREGIR: Mapear correctamente a las columnas reales
+	Documento string `gorm:"primaryKey;column:documento;type:text"`
+	Nombres   string `gorm:"column:nombres;type:text"`
+	Apellidos string `gorm:"column:apellido;type:text"`
+	Email     string `gorm:"column:email;type:text"`
+	Username  string `gorm:"column:nom_user;type:text"`
+	Pass      string `gorm:"column:pass;type:text"`
+	IDRol     int64  `gorm:"column:id_rol;type:bigint"`
+	IDEstado  int64  `gorm:"column:estado_id;type:bigint"`
+
+	// Campos adicionales que existen en tu BD
+	InfoPerfil      string    `gorm:"column:info_perfil;type:text"`
+	NumContacto     string    `gorm:"column:num_contacto;type:text"`
+	FechaNacimiento time.Time `gorm:"column:fecha_nacimiento"`
+	FechaRegistro   time.Time `gorm:"column:fecha_registro"`
 
 	// Relaciones
-	Estado Estado `gorm:"foreignKey:IDEstado"`
-	Rol    Rol    `gorm:"foreignKey:IDRol"`
+	Estado Estado `gorm:"foreignKey:IDEstado;references:ID"`
+	Rol    Rol    `gorm:"foreignKey:IDRol;references:ID"`
 }
 
 type Estado struct {

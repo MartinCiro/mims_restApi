@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"api_go/internal/core/auth"
+	"api_go/pkg/logger"
 )
 
 type AuthAdapter struct {
@@ -39,16 +40,15 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 		fmt.Printf("❌ Usuario no encontrado: %s\n", authData.Username)
 		return nil, nil
 	}
-
+	logger.Info("Usuario completo: ", usuario)
 	// 2. Buscar permisos (si tiene rol)
 	if usuario.IDRol != nil {
 		permisos, err := a.permisoRepo.FindByRolID(ctx, *usuario.IDRol)
 		if err != nil {
-			fmt.Printf("⚠️  Error obteniendo permisos (continuando sin permisos): %v\n", err)
+			logger.Error("⚠️  Error obteniendo permisos (continuando sin permisos): %v\n", err)
 			usuario.Permisos = []string{}
 		} else {
 			usuario.Permisos = permisos
-			fmt.Printf("✅ Permisos asignados: %d permisos\n", len(permisos))
 		}
 	}
 
@@ -56,10 +56,10 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 	if usuario.IDRol != nil {
 		rol, err := a.rolRepo.FindByID(ctx, *usuario.IDRol)
 		if err != nil {
-			fmt.Printf("⚠️  Error obteniendo rol (continuando): %v\n", err)
+			logger.Warn("⚠️  Error obteniendo rol (continuando): %v\n", err)
 		} else if rol != nil {
 			// usuario.RolNombre = rol.Nombre // Si necesitas esta info
-			fmt.Printf("✅ Información de rol obtenida: %s\n", rol.Nombre)
+			logger.Info("✅ Rol del usuario: %s\n", rol.Nombre)
 		}
 	}
 
@@ -93,10 +93,10 @@ func (a *AuthAdapter) RetrieveUserByID(ctx context.Context, userID int) (*auth.U
 	if usuario.IDRol != nil {
 		rol, err := a.rolRepo.FindByID(ctx, *usuario.IDRol)
 		if err != nil {
-			fmt.Printf("⚠️ Error obteniendo rol (continuando): %v\n", err)
+			logger.Warn("⚠️ Error obteniendo rol (continuando): %v\n", err)
 		} else if rol != nil {
 			usuario.RolNombre = rol.Nombre // ✅ Asignar nombre del rol
-			fmt.Printf("✅ Información de rol obtenida: %s\n", rol.Nombre)
+			logger.Info("✅ Rol del usuario: %s\n", rol.Nombre)
 		}
 	}
 
