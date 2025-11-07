@@ -227,7 +227,6 @@ make build; docker save go-api:latest -o go-api.tar; sudo ctr -n k8s.io images i
 
 ### Ajustar pods, recrear almacenamiento de datos
 
-
 ```bash
 # Detener y limpiar
 kubectl scale deployment postgres-deployment --replicas=0
@@ -249,6 +248,11 @@ kubectl scale deployment redis-deployment --replicas=1
 ### 🗃️ Ver contenido del Secret llamado "app-secrets"
 ```bash
 kubectl get secret app-secrets -o yaml
+```
+
+### 👁️ Verificar informacion de los servicios (ip, puertos)
+```bash
+kubectl get svc
 ```
 
 ### ⚙️ Aplicar archivos de configuración
