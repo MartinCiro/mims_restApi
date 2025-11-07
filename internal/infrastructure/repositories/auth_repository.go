@@ -26,40 +26,50 @@ func NewAuthAdapter(
 	}
 }
 
-// RetrieveUser implementa el puerto AuthPort
 func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) (*auth.User, error) {
-	fmt.Printf("🔍 Coordinando búsqueda de usuario: %s\n", authData.Username)
+	var searchField, searchValue string
 
-	// 1. Buscar usuario
-	usuario, err := a.usuarioRepo.FindByUsername(ctx, authData.Username)
+	if authData.Email != "" {
+		searchField = "email"
+		searchValue = authData.Email
+		fmt.Printf("🔍 Buscando usuario por email: %s\n", authData.Email)
+	} else if authData.Username != "" {
+		searchField = "username"
+		searchValue = authData.Username
+		fmt.Printf("🔍 Buscando usuario por username: %s\n", authData.Username)
+	} else {
+		return nil, fmt.Errorf("debe proporcionar email o username")
+	}
+
+	usuario, err := a.usuarioRepo.FindByEmailOrUsername(ctx, searchField, searchValue)
 	if err != nil {
 		return nil, fmt.Errorf("error recuperando usuario: %v", err)
 	}
 
 	if usuario == nil {
-		fmt.Printf("❌ Usuario no encontrado: %s\n", authData.Username)
+		fmt.Printf("❌ Usuario no encontrado: %s=%s\n", searchField, searchValue)
 		return nil, nil
 	}
-	logger.Info("Usuario completo: ", usuario)
-	// 2. Buscar permisos (si tiene rol)
+
+	logger.Info("✅ Usuario encontrado", "user_id", usuario.ID, "email", usuario.Email)
+
 	if usuario.IDRol != nil {
 		permisos, err := a.permisoRepo.FindByRolID(ctx, *usuario.IDRol)
 		if err != nil {
-			logger.Error("⚠️  Error obteniendo permisos (continuando sin permisos): %v\n", err)
+			logger.Error("⚠️ Error obteniendo permisos (continuando sin permisos)", "error", err)
 			usuario.Permisos = []string{}
 		} else {
 			usuario.Permisos = permisos
 		}
 	}
 
-	// 3. Buscar información del rol (opcional)
 	if usuario.IDRol != nil {
 		rol, err := a.rolRepo.FindByID(ctx, *usuario.IDRol)
 		if err != nil {
-			logger.Warn("⚠️  Error obteniendo rol (continuando): %v\n", err)
+			logger.Warn("⚠️ Error obteniendo rol (continuando)", "error", err)
 		} else if rol != nil {
-			// usuario.RolNombre = rol.Nombre // Si necesitas esta info
-			logger.Info("✅ Rol del usuario: %s\n", rol.Nombre)
+			usuario.RolNombre = rol.Nombre
+			logger.Info("✅ Rol del usuario", "rol", rol.Nombre)
 		}
 	}
 
@@ -67,7 +77,6 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 }
 
 func (a *AuthAdapter) RetrieveUserByID(ctx context.Context, userID int) (*auth.User, error) {
-	// 1. Buscar usuario
 	usuario, err := a.usuarioRepo.FindByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -77,7 +86,6 @@ func (a *AuthAdapter) RetrieveUserByID(ctx context.Context, userID int) (*auth.U
 		return nil, fmt.Errorf("usuario no encontrado")
 	}
 
-	// ✅ NUEVO: 2. Buscar permisos (si tiene rol)
 	if usuario.IDRol != nil {
 		permisos, err := a.permisoRepo.FindByRolID(ctx, *usuario.IDRol)
 		if err != nil {
@@ -89,14 +97,13 @@ func (a *AuthAdapter) RetrieveUserByID(ctx context.Context, userID int) (*auth.U
 		}
 	}
 
-	// ✅ NUEVO: 3. Buscar información del rol
 	if usuario.IDRol != nil {
 		rol, err := a.rolRepo.FindByID(ctx, *usuario.IDRol)
 		if err != nil {
-			logger.Warn("⚠️ Error obteniendo rol (continuando): %v\n", err)
+			logger.Warn("⚠️ Error obteniendo rol (continuando)", "error", err)
 		} else if rol != nil {
-			usuario.RolNombre = rol.Nombre // ✅ Asignar nombre del rol
-			logger.Info("✅ Rol del usuario: %s\n", rol.Nombre)
+			usuario.RolNombre = rol.Nombre
+			logger.Info("✅ Rol del usuario", "rol", rol.Nombre)
 		}
 	}
 

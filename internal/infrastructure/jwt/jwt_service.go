@@ -35,11 +35,17 @@ func NewJWTService(secretKey, environment string) *JWTService {
 
 // GenerateJWT genera un nuevo token JWT
 func (js *JWTService) GenerateJWT(userInfo JwtPayload) (string, error) {
+	token, _, err := js.GenerateJWTWithExpiry(userInfo, 24*time.Hour) // 24 horas por defecto
+	return token, err
+}
+
+// GenerateJWTWithExpiry genera un token JWT con tiempo de expiración personalizado
+func (js *JWTService) GenerateJWTWithExpiry(userInfo JwtPayload, expiry time.Duration) (string, time.Time, error) {
 	if js.secretKey == "" {
-		return "", errors.New("JWT_SECRETO no está definido en la configuración")
+		return "", time.Time{}, errors.New("JWT_SECRETO no está definido en la configuración")
 	}
 
-	expirationTime := time.Now().Add(1 * time.Hour)
+	expirationTime := time.Now().Add(expiry)
 
 	claims := &JwtPayload{
 		IDUser:   userInfo.IDUser,
@@ -53,7 +59,8 @@ func (js *JWTService) GenerateJWT(userInfo JwtPayload) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString([]byte(js.secretKey))
+	tokenString, err := token.SignedString([]byte(js.secretKey))
+	return tokenString, expirationTime, err
 }
 
 // VerifyJWT verifica y valida un token JWT

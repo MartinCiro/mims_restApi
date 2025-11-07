@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"api_go/config"
+	"api_go/internal/infrastructure/cookies"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/infrastructure/redis"
 	"api_go/internal/interfaces/api/common"
@@ -21,6 +22,7 @@ type AuthService struct {
 	authPort        AuthPort
 	redisService    *redis.Cache
 	jwtService      *jwt.JWTService
+	cookieSigner    *cookies.CookieSigner
 	passwordService *utils.PasswordService
 	userRepo        UserRepositoryPort
 	rolRepo         RolRepositoryPort
@@ -32,6 +34,7 @@ func NewAuthService(
 	authPort AuthPort,
 	redisService *redis.Cache,
 	jwtService *jwt.JWTService,
+	cookieSigner *cookies.CookieSigner,
 	passwordService *utils.PasswordService,
 	userRepo UserRepositoryPort,
 	rolRepo RolRepositoryPort,
@@ -42,6 +45,7 @@ func NewAuthService(
 		authPort:        authPort,
 		redisService:    redisService,
 		jwtService:      jwtService,
+		cookieSigner:    cookieSigner,
 		passwordService: passwordService,
 		userRepo:        userRepo,
 		rolRepo:         rolRepo,
@@ -51,20 +55,14 @@ func NewAuthService(
 }
 
 type LoginRequest struct {
-	Username string `json:"username"`
+	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
 type LoginResponse struct {
-	Token   string `json:"token"`
-	Usuario struct {
-		ID     int    `json:"id"`
-		Nombre string `json:"nombre"`
-		Rol    *int   `json:"rol"`
-	} `json:"usuario"`
+	User *User `json:"user"`
 }
 
-// UserCacheData representa los datos del usuario en cache
 type UserCacheData struct {
 	IDUser   int      `json:"id_user"`
 	Nombre   string   `json:"nombre"`
@@ -72,7 +70,6 @@ type UserCacheData struct {
 	Permisos []string `json:"permisos,omitempty"`
 }
 
-// ProfileResponse define la estructura de respuesta para el perfil
 type ProfileResponse struct {
 	ID       int      `json:"id"`
 	Nombre   string   `json:"nombre"`
@@ -80,14 +77,32 @@ type ProfileResponse struct {
 	Permisos []string `json:"permisos,omitempty"`
 }
 
-func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.ResponseBody[LoginResponse], error) {
-	// Obtener usuario del puerto de autenticación
-	usuarioRetrieved, err := s.authPort.RetrieveUser(ctx, AuthData{Username: req.Username})
-	if err != nil {
-		return nil, fmt.Errorf("usuario o contraseña inválida")
+type AuthResponse struct {
+	User      *User               `json:"user"`
+	Token     *jwt.VerifyResponse `json:"token,omitempty"`
+	ExpiresAt time.Time           `json:"expires_at,omitempty"`
+}
+
+func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthResponse, string, time.Time, error) {
+	if req.Email == "" {
+		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
 	}
 
-	// Verificar contraseña
+	logger.Info("🔍 Iniciando login", "email", req.Email)
+
+	usuarioRetrieved, err := s.authPort.RetrieveUser(ctx, AuthData{Email: req.Email})
+	if err != nil {
+		logger.Error("❌ Error buscando usuario", "email", req.Email, "error", err)
+		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
+	}
+
+	if usuarioRetrieved == nil || usuarioRetrieved.ID == 0 {
+		logger.Error("❌ Usuario no encontrado", "email", req.Email)
+		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
+	}
+
+	logger.Info("✅ Usuario encontrado", "userID", usuarioRetrieved.ID, "email", usuarioRetrieved.Email)
+
 	usuario := NewUsuarioFromEncrypted(
 		usuarioRetrieved.Username,
 		usuarioRetrieved.PasswordHash,
@@ -97,25 +112,25 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.
 
 	isPasswordValid := usuario.ComparePassword(req.Password, s.passwordService)
 	if !isPasswordValid {
-		return nil, fmt.Errorf("usuario o contraseña inválida")
+		logger.Error("❌ Contraseña inválida", "userID", usuarioRetrieved.ID)
+		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
 	}
+
+	logger.Info("✅ Contraseña válida", "userID", usuarioRetrieved.ID)
 
 	userCacheKey := fmt.Sprintf("user:%d", usuarioRetrieved.ID)
 	eventKey := fmt.Sprintf("event:usuario.logeado:%d", usuarioRetrieved.ID)
 
-	// Revisar si el usuario ya está en cache
 	cachedUser, err := s.redisService.Get(ctx, userCacheKey)
 	var userData UserCacheData
 
 	if err == nil && cachedUser != "" {
-		// Usuario en cache, parsear datos
 		err = json.Unmarshal([]byte(cachedUser), &userData)
 		if err != nil {
 			log.Printf("Error parsing cached user data: %v", err)
 		}
 	}
 
-	// Si no hay datos en cache o hubo error, crear nuevos
 	if userData.IDUser == 0 {
 		userData = UserCacheData{
 			IDUser: usuarioRetrieved.ID,
@@ -123,65 +138,69 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*common.
 			IDRol:  usuarioRetrieved.IDRol,
 		}
 
-		// Agregar permisos si están disponibles (adaptar según tu estructura)
 		userDataWithPermissions := userData
-		// userDataWithPermissions.Permisos = usuarioRetrieved.Permisos // Descomentar si tienes permisos
 
-		// Guardar en Redis
 		userDataJSON, err := json.Marshal(userDataWithPermissions)
 		if err != nil {
 			log.Printf("Error marshaling user data for cache: %v", err)
 		} else {
-			err = s.redisService.Set(ctx, userCacheKey, string(userDataJSON), 24*time.Hour) // Cache por 24 horas
+			err = s.redisService.Set(ctx, userCacheKey, string(userDataJSON), 24*time.Hour)
 			if err != nil {
 				log.Printf("Error setting user cache: %v", err)
 			}
 		}
 	}
 
-	// Generar JWT
-	token, err := s.jwtService.GenerateJWT(jwt.JwtPayload{
+	cookieData := &cookies.SignedCookieData{
+		UserID:    usuarioRetrieved.ID,
+		Username:  usuarioRetrieved.Username,
+		Role:      usuarioRetrieved.RolNombre,
+		RoleID:    *usuarioRetrieved.IDRol,
+		ExpiresAt: time.Now().Add(time.Duration(s.config.JWTExpireTime) * time.Second),
+		IssuedAt:  time.Now(),
+	}
+
+	signedCookie, err := s.cookieSigner.Sign(cookieData)
+	if err != nil {
+		return nil, "", time.Time{}, fmt.Errorf("error generando cookie de autenticación: %v", err)
+	}
+
+	jwtToken, _, err := s.jwtService.GenerateJWTWithExpiry(jwt.JwtPayload{
 		IDUser:   usuarioRetrieved.ID,
 		Username: usuarioRetrieved.Username,
 		IDRol:    *usuarioRetrieved.IDRol,
-	})
-	if err != nil {
-		return nil, fmt.Errorf("error generando token: %v", err)
+	}, time.Duration(s.config.JWTExpireTime)*time.Second)
+
+	var tokenResponse *jwt.VerifyResponse
+	if err == nil {
+		tokenResponse = &jwt.VerifyResponse{
+			UserInfo: &jwt.JwtPayload{
+				IDUser:   usuarioRetrieved.ID,
+				Username: usuarioRetrieved.Username,
+				IDRol:    *usuarioRetrieved.IDRol,
+			},
+			JWT: &jwtToken,
+		}
 	}
 
-	// Verificar si el evento ya se publicó en Redis
 	eventExists, err := s.redisService.Get(ctx, eventKey)
 	if err != nil || eventExists == "" {
-		// Evento no existe, guardarlo
-		err = s.redisService.Set(ctx, eventKey, "true", 1*time.Hour) // Evento por 1 hora
+		err = s.redisService.Set(ctx, eventKey, "true", 1*time.Hour)
 		if err != nil {
 			log.Printf("Error setting event cache: %v", err)
 		}
 	}
 
-	// Construir respuesta
-	responseData := LoginResponse{
-		Token: token,
-		Usuario: struct {
-			ID     int    `json:"id"`
-			Nombre string `json:"nombre"`
-			Rol    *int   `json:"rol"`
-		}{
-			ID:     userData.IDUser,
-			Nombre: userData.Nombre,
-			Rol:    userData.IDRol,
-		},
+	response := &AuthResponse{
+		User:      usuarioRetrieved,
+		Token:     tokenResponse,
+		ExpiresAt: cookieData.ExpiresAt,
 	}
 
-	return &common.ResponseBody[LoginResponse]{
-		Success: true,
-		Code:    200,
-		Data:    responseData,
-	}, nil
+	return response, signedCookie, cookieData.ExpiresAt, nil
 }
 
 func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*common.ResponseBody[ProfileResponse], error) {
-	// Convertir userID string a int
 	userIDInt, err := strconv.Atoi(userID)
 	if err != nil {
 		return nil, fmt.Errorf("ID de usuario inválido")
@@ -189,22 +208,18 @@ func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*commo
 
 	userCacheKey := fmt.Sprintf("user:%d", userIDInt)
 
-	// Intentar obtener del cache primero
 	cachedUser, err := s.redisService.Get(ctx, userCacheKey)
 	var userData UserCacheData
 
 	if err == nil && cachedUser != "" {
-		// Usuario en cache, parsear datos
 		err = json.Unmarshal([]byte(cachedUser), &userData)
 		if err != nil {
 			log.Printf("Error parsing cached user data: %v", err)
 		}
 	}
 
-	// Si no hay datos en cache, obtener de la base de datos
 	var usuarioRetrieved *User
 	if userData.IDUser == 0 {
-		// Obtener usuario del puerto de autenticación (ahora incluye rol y permisos)
 		usuarioRetrieved, err = s.authPort.RetrieveUserByID(ctx, userIDInt)
 		if err != nil {
 			return nil, fmt.Errorf("usuario no encontrado")
@@ -214,10 +229,9 @@ func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*commo
 			IDUser:   usuarioRetrieved.ID,
 			Nombre:   usuarioRetrieved.Username,
 			IDRol:    usuarioRetrieved.IDRol,
-			Permisos: usuarioRetrieved.Permisos, // ✅ Ahora incluye permisos en cache
+			Permisos: usuarioRetrieved.Permisos,
 		}
 
-		// Guardar en Redis para futuras consultas
 		userDataJSON, err := json.Marshal(userData)
 		if err != nil {
 			log.Printf("Error marshaling user data for cache: %v", err)
@@ -230,14 +244,12 @@ func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*commo
 			}
 		}
 	} else {
-		// Si usamos cache, obtener el usuario completo para el rol nombre
 		usuarioRetrieved, err = s.authPort.RetrieveUserByID(ctx, userIDInt)
 		if err != nil {
 			return nil, fmt.Errorf("usuario no encontrado")
 		}
 	}
 
-	// Construir respuesta del perfil con la información completa
 	profileData := ProfileResponse{
 		ID:       usuarioRetrieved.ID,
 		Nombre:   usuarioRetrieved.Username,
@@ -252,114 +264,121 @@ func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*commo
 	}, nil
 }
 
-// RegisterRequest define la estructura para registro de usuarios
 type RegisterRequest struct {
 	Username  string  `json:"username"`
 	Email     string  `json:"email"`
 	Password  string  `json:"password"`
-	RolNombre *string `json:"rol_nombre,omitempty"` // Opcional para usuarios autenticados
+	RolNombre *string `json:"rol_nombre,omitempty"`
 }
 
-// RegisterResponse define la respuesta del registro
-type RegisterResponse struct {
-	Token     string `json:"token"`
-	ExpiresIn int    `json:"expires_in"`
-}
-
-// RegisterUser registra un nuevo usuario
-func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, currentUser *User) (*RegisterResponse, error) {
+func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, currentUser *User) (*AuthResponse, string, time.Time, error) {
 	logger.Info("Iniciando registro de usuario", "username", req.Username, "email", req.Email)
 
 	var rolNombre string
 	var estadoNombre string = "activo"
 
-	// Determinar rol según el contexto
 	if currentUser != nil {
-		// Usuario autenticado: validar permisos
 		hasPermission := s.hasPermission(currentUser.Permisos, "usuarios.crear")
 		if !hasPermission {
-			return nil, fmt.Errorf("no tiene permisos para crear usuarios")
+			return nil, "", time.Time{}, fmt.Errorf("no tiene permisos para crear usuarios")
 		}
 
-		// Usar rol proporcionado o "usuario" por defecto
 		if req.RolNombre != nil {
 			rolNombre = *req.RolNombre
 		} else {
 			rolNombre = "usuario"
 		}
 	} else {
-		// Usuario guest: rol "invitado"
 		rolNombre = "invitado"
 	}
 
-	// Buscar ID del rol por nombre
 	rolID, err := s.rolRepo.FindRolIDByName(ctx, rolNombre)
 	if err != nil {
-		return nil, fmt.Errorf("error buscando rol '%s': %v", rolNombre, err)
+		return nil, "", time.Time{}, fmt.Errorf("error buscando rol '%s': %v", rolNombre, err)
 	}
 	if rolID == 0 {
-		return nil, fmt.Errorf("rol '%s' no encontrado", rolNombre)
+		return nil, "", time.Time{}, fmt.Errorf("rol '%s' no encontrado", rolNombre)
 	}
 
-	// Buscar ID del estado "activo"
 	estadoID, err := s.estadoRepo.FindEstadoIDByName(ctx, estadoNombre)
 	if err != nil {
-		return nil, fmt.Errorf("error buscando estado '%s': %v", estadoNombre, err)
+		return nil, "", time.Time{}, fmt.Errorf("error buscando estado '%s': %v", estadoNombre, err)
 	}
 	if estadoID == 0 {
-		return nil, fmt.Errorf("estado '%s' no encontrado", estadoNombre)
+		return nil, "", time.Time{}, fmt.Errorf("estado '%s' no encontrado", estadoNombre)
 	}
 
-	// Crear nuevo usuario
 	newUser, err := NewUsuario(req.Username, req.Password, &rolID, &estadoID)
 	if err != nil {
-		return nil, err
+		return nil, "", time.Time{}, err
 	}
 
-	// Guardar en base de datos
 	userID, err := s.userRepo.CreateUser(ctx, newUser, req.Email)
 	if err != nil {
-		// Verificar si es error de duplicado
 		if strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
-			return nil, fmt.Errorf("El usuario ya existe, inicie sesión para continuar")
+			return nil, "", time.Time{}, fmt.Errorf("El usuario ya existe, inicie sesión para continuar")
 		}
 
 		logger.Error("No se pudo crear el usuario", "error", err)
-
-		// Para cualquier otro error
-		return nil, fmt.Errorf("Ha ocurrido un error en el servidor, contacte al administrador")
+		return nil, "", time.Time{}, fmt.Errorf("Ha ocurrido un error en el servidor, contacte al administrador")
 	}
 
 	logger.Info("✅ Usuario creado en BD", "userID", userID)
 
-	// Obtener usuario completo con permisos
 	user, err := s.authPort.RetrieveUserByID(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("error obteniendo usuario creado: %v", err)
+		return nil, "", time.Time{}, fmt.Errorf("error obteniendo usuario creado: %v", err)
 	}
 
-	// Generar token JWT
-	token, err := s.jwtService.GenerateJWT(jwt.JwtPayload{
-		IDUser:   user.ID,
-		Username: user.Username,
-		IDRol:    rolID,
-	})
+	cookieData := &cookies.SignedCookieData{
+		UserID:    user.ID,
+		Username:  user.Username,
+		Role:      rolNombre,
+		RoleID:    rolID,
+		ExpiresAt: time.Now().Add(time.Duration(s.config.JWTExpireTime) * time.Second),
+		IssuedAt:  time.Now(),
+	}
+
+	signedCookie, err := s.cookieSigner.Sign(cookieData)
 	if err != nil {
-		return nil, fmt.Errorf("error generando token: %v", err)
+		return nil, "", time.Time{}, fmt.Errorf("error generando cookie de autenticación: %v", err)
 	}
 
 	logger.Info("✅ Registro completado exitosamente", "userID", userID, "username", user.Username)
 
-	// Construir respuesta
-	response := &RegisterResponse{
-		Token:     token,
-		ExpiresIn: s.config.JWTExpireTime,
+	response := &AuthResponse{
+		User:      user,
+		ExpiresAt: cookieData.ExpiresAt,
 	}
 
-	return response, nil
+	return response, signedCookie, cookieData.ExpiresAt, nil
 }
 
-// hasPermission verifica si el usuario tiene un permiso específico
+func (s *AuthService) ValidateCookie(cookieValue string) (*User, error) {
+	cookieData, err := s.cookieSigner.Verify(cookieValue)
+	if err != nil {
+		return nil, err
+	}
+
+	return &User{
+		ID:        cookieData.UserID,
+		Username:  cookieData.Username,
+		RolNombre: cookieData.Role,
+		IDRol:     &cookieData.RoleID,
+	}, nil
+}
+
+func (s *AuthService) Logout(ctx context.Context, userID int) error {
+	userCacheKey := fmt.Sprintf("user:%d", userID)
+	if s.redisService != nil {
+		err := s.redisService.Delete(ctx, userCacheKey)
+		if err != nil {
+			log.Printf("Error clearing user cache: %v", err)
+		}
+	}
+	return nil
+}
+
 func (s *AuthService) hasPermission(permisos []string, permission string) bool {
 	for _, perm := range permisos {
 		if perm == permission {

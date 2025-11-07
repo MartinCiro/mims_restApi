@@ -25,6 +25,7 @@ type Config struct {
 	JWTSecret     string
 	JWTSalt       string
 	JWTExpireTime int
+	CookieSecret  string
 
 	// Redis
 	RedisTTL      int
@@ -72,6 +73,9 @@ func Load() *Config {
 		JWTSecret:     getEnv("JWT_SECRETO", ""),
 		JWTSalt:       getEnv("JWT_SALT", "10"),
 		JWTExpireTime: getEnvAsInt("JWT_TIEMPO_EXPIRA", 3600),
+
+		//
+		CookieSecret: getEnv("COOKIE_SECRET", "default-cookie-secret-key-32-chars-long-123"),
 
 		// Redis
 		RedisTTL:      getEnvAsInt("REDIS_TTL", 3600),

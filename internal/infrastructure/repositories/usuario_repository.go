@@ -25,6 +25,59 @@ func NewUsuarioRepository(dbManager *database.DBManager) *UsuarioRepository {
 	}
 }
 
+func (r *UsuarioRepository) FindByEmailOrUsername(ctx context.Context, field, value string) (*auth.User, error) {
+	fmt.Printf("🔍 Buscando usuario por %s: %s\n", field, value)
+
+	var usuarioDB struct {
+		Documento string `gorm:"column:documento"`
+		Nombres   string `gorm:"column:nombres"`
+		Apellido  string `gorm:"column:apellido"`
+		Email     string `gorm:"column:email"`
+		NomUser   string `gorm:"column:nom_user"`
+		Pass      string `gorm:"column:pass"`
+		IDRol     int    `gorm:"column:id_rol"`
+		EstadoID  int    `gorm:"column:estado_id"`
+	}
+
+	query := r.dbManager.GetDB().WithContext(ctx).Table("usuarios")
+
+	if field == "email" {
+		query = query.Where("email = ?", value)
+	} else if field == "username" {
+		query = query.Where("nom_user = ?", value)
+	} else {
+		return nil, fmt.Errorf("campo de búsqueda inválido: %s", field)
+	}
+
+	err := query.First(&usuarioDB).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			fmt.Printf("❌ Usuario no encontrado: %s=%s\n", field, value)
+			return nil, nil
+		}
+		fmt.Printf("❌ Error buscando usuario: %v\n", err)
+		return nil, fmt.Errorf("error buscando usuario: %v", err)
+	}
+
+	fmt.Printf("✅ Usuario encontrado: Documento=%s, Email=%s, NomUser=%s\n",
+		usuarioDB.Documento, usuarioDB.Email, usuarioDB.NomUser)
+
+	documentoInt, err := strconv.Atoi(usuarioDB.Documento)
+	if err != nil {
+		return nil, fmt.Errorf("error al convertir documento: %v", err)
+	}
+
+	return &auth.User{
+		ID:           documentoInt,
+		Username:     usuarioDB.NomUser,
+		Email:        usuarioDB.Email,
+		PasswordHash: usuarioDB.Pass,
+		IDRol:        &usuarioDB.IDRol,
+		IDEstado:     &usuarioDB.EstadoID,
+	}, nil
+}
+
 // FindByUsername busca usuario por email (que es el username en tu caso)
 func (r *UsuarioRepository) FindByUsername(ctx context.Context, email string) (*auth.User, error) {
 	fmt.Printf("🔍 Buscando usuario por email: %s\n", email)

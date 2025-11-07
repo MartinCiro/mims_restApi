@@ -2,9 +2,13 @@ package auth
 
 import (
 	"api_go/pkg/utils"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
+
+// ExpiresAt alias para time.Time para mayor claridad
+type ExpiresAt = time.Time
 
 type Usuario struct {
 	ID                *int   `json:"id,omitempty"`

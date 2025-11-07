@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"api_go/internal/core/auth"
+	"api_go/internal/infrastructure/cookies"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/interfaces/api/common"
 )
@@ -20,15 +21,20 @@ var (
 )
 
 type AuthMiddleware struct {
-	jwtService  *jwt.JWTService
-	authService *auth.AuthService
-	authRepo    auth.AuthPort
+	jwtService   *jwt.JWTService
+	authService  *auth.AuthService
+	authRepo     auth.AuthPort
+	cookieSigner *cookies.CookieSigner
 }
 
 func NewAuthMiddleware(jwtService *jwt.JWTService) *AuthMiddleware {
 	return &AuthMiddleware{
 		jwtService: jwtService,
 	}
+}
+
+func (am *AuthMiddleware) SetCookieSigner(cookieSigner *cookies.CookieSigner) {
+	am.cookieSigner = cookieSigner
 }
 
 // SetAuthService establece el auth service (para OptionalAuth)

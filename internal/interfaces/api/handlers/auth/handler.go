@@ -2,10 +2,13 @@ package auth
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"api_go/internal/core/auth"
+	"api_go/internal/infrastructure/cookies"
 	"api_go/internal/interfaces/api/common"
 )
 
@@ -20,25 +23,50 @@ func NewAuthHandler(authService *auth.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
-	var req auth.LoginRequest
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		response := common.NewErrorResponse(400, "Solicitud inválida")
 		common.WriteJSONResponse(w, response, 400)
 		return
 	}
 
+	if req.Email == "" {
+		response := common.NewErrorResponse(400, "El email es requerido")
+		common.WriteJSONResponse(w, response, 400)
+		return
+	}
+
 	ctx := r.Context()
-	response, err := h.authService.LoginUser(ctx, req)
+
+	loginReq := auth.LoginRequest{
+		Email:    req.Email,
+		Password: req.Password,
+	}
+
+	authResponse, signedCookie, expiresAt, err := h.authService.LoginUser(ctx, loginReq)
 	if err != nil {
 		errorResponse := common.NewErrorResponse(401, err.Error())
 		common.WriteJSONResponse(w, errorResponse, 401)
 		return
 	}
 
-	common.WriteJSONResponse(w, *response, 200)
+	if signedCookie != "" {
+		cookies.SetAuthCookie(w, signedCookie, expiresAt)
+		fmt.Printf("🎯 COOKIE SET IN LOGIN: %s\n", signedCookie)
+	}
+
+	responseData := map[string]interface{}{
+		"user": authResponse.User,
+	}
+
+	successResponse := common.NewSuccessResponse(responseData)
+	common.WriteJSONResponse(w, successResponse, 200)
 }
 
-// internal/interfaces/api/handlers/auth/handler.go
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req auth.RegisterRequest
 
@@ -48,7 +76,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Validaciones básicas
 	if req.Username == "" || req.Email == "" || req.Password == "" {
 		response := common.NewErrorResponse(400, "Username, email y password son requeridos")
 		common.WriteJSONResponse(w, response, 400)
@@ -63,15 +90,13 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 
-	// Extraer usuario del contexto (si existe)
 	var currentUser *auth.User
 	if user, ok := ctx.Value("user").(*auth.User); ok {
 		currentUser = user
 	}
 
-	response, err := h.authService.RegisterUser(ctx, req, currentUser)
+	authResponse, signedCookie, expiresAt, err := h.authService.RegisterUser(ctx, req, currentUser)
 	if err != nil {
-		// Manejar errores específicos con diferentes códigos de estado
 		statusCode := 400
 		if strings.Contains(err.Error(), "Ha ocurrido un error en el servidor") {
 			statusCode = 500
@@ -84,6 +109,49 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	successResponse := common.NewSuccessResponse(response)
-	common.WriteJSONResponse(w, successResponse, successResponse.Code)
+	if signedCookie != "" {
+		cookies.SetAuthCookie(w, signedCookie, expiresAt)
+		fmt.Printf("🎯 COOKIE SET IN REGISTER: %s\n", signedCookie)
+	}
+
+	responseData := map[string]interface{}{
+		"user": authResponse.User,
+	}
+
+	successResponse := common.NewSuccessResponse(responseData)
+	common.WriteJSONResponse(w, successResponse, 201)
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	if userIDStr, ok := ctx.Value("userID").(string); ok {
+		if userID, err := strconv.Atoi(userIDStr); err == nil {
+			h.authService.Logout(ctx, userID)
+		}
+	}
+
+	cookies.ClearAuthCookie(w)
+
+	successResponse := common.NewSuccessResponse("Sesión cerrada exitosamente")
+	common.WriteJSONResponse(w, successResponse, 200)
+}
+
+func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
+	user, ok := r.Context().Value("user").(*auth.User)
+	if !ok || user == nil {
+		response := common.NewErrorResponse(401, "No autenticado")
+		common.WriteJSONResponse(w, response, 401)
+		return
+	}
+
+	safeUser := map[string]interface{}{
+		"id":       user.ID,
+		"username": user.Username,
+		"email":    user.Email,
+		"rol":      user.RolNombre,
+	}
+
+	successResponse := common.NewSuccessResponse(safeUser)
+	common.WriteJSONResponse(w, successResponse, 200)
 }

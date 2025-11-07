@@ -12,6 +12,7 @@ import (
 	"api_go/internal/core/auth"
 	"api_go/internal/core/estados"
 	"api_go/internal/core/login"
+	"api_go/internal/infrastructure/cookies"
 	"api_go/internal/infrastructure/database"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/infrastructure/redis"
@@ -25,9 +26,10 @@ type App struct {
 	Config *config.Config
 
 	// Infraestructura
-	DB         *gorm.DB
-	RedisCache *redis.Cache
-	JWTService *jwt.JWTService
+	DB           *gorm.DB
+	RedisCache   *redis.Cache
+	JWTService   *jwt.JWTService
+	CookieSigner *cookies.CookieSigner
 
 	// Servicios del Core
 	AuthService   *auth.AuthService
@@ -83,6 +85,9 @@ func (a *App) initializeInfrastructure() error {
 	// Inicializar JWT Service
 	a.JWTService = a.initializeJWTService()
 
+	// Inicializar Cookie Signer
+	a.CookieSigner = a.initializeCookieSigner()
+
 	return nil
 }
 
@@ -134,6 +139,15 @@ func (a *App) initializeJWTService() *jwt.JWTService {
 	)
 }
 
+func (a *App) initializeCookieSigner() *cookies.CookieSigner {
+	if a.Config.CookieSecret == "" {
+		logger.Warn("CookieSecret está vacío en la configuración, usando valor por defecto")
+	} else {
+		logger.Info("CookieSecret cargado correctamente", "length", len(a.Config.CookieSecret))
+	}
+	return cookies.NewCookieSigner(a.Config.CookieSecret)
+}
+
 func (a *App) initializeServices() error {
 	// Inicializar servicios de utilidad
 	a.PasswordService = utils.NewPasswordService(a.Config.JWTSalt)
@@ -155,6 +169,7 @@ func (a *App) initializeServices() error {
 		authAdapter,
 		a.RedisCache,
 		a.JWTService,
+		a.CookieSigner, // NUEVO: Agregar CookieSigner
 		a.PasswordService,
 		usuarioRepo,
 		rolRepo,
