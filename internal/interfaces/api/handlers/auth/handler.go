@@ -135,22 +135,3 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 	successResponse := common.NewSuccessResponse("Sesión cerrada exitosamente")
 	common.WriteJSONResponse(w, successResponse, 200)
 }
-
-func (h *AuthHandler) GetCurrentUser(w http.ResponseWriter, r *http.Request) {
-	user, ok := r.Context().Value("user").(*auth.User)
-	if !ok || user == nil {
-		response := common.NewErrorResponse(401, "No autenticado")
-		common.WriteJSONResponse(w, response, 401)
-		return
-	}
-
-	safeUser := map[string]interface{}{
-		"id":       user.ID,
-		"username": user.Username,
-		"email":    user.Email,
-		"rol":      user.RolNombre,
-	}
-
-	successResponse := common.NewSuccessResponse(safeUser)
-	common.WriteJSONResponse(w, successResponse, 200)
-}

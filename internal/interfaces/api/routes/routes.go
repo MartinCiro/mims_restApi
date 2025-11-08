@@ -55,6 +55,9 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	// Configurar auth service en el middleware
 	authMiddleware.SetAuthService(app.AuthService)
 
+	// Inicializar permisos middleware
+	permsMiddleware := middlewares.NewPermissionsMiddleware(app.RedisCache)
+
 	// Inicializar handlers
 	estadosHandler := estados.NewEstadosHandler(app.EstadoService)
 	authHandler := auth.NewAuthHandler(app.AuthService)
@@ -77,18 +80,36 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	// Crear un subrouter para rutas protegidas
 	protected := http.NewServeMux()
 
-	// Rutas de Estados
-	protected.HandleFunc("GET /api/estados", estadosHandler.ObtenerEstados)
-	protected.HandleFunc("GET /api/estados/{id}", estadosHandler.ObtenerEstadoXid)
-	protected.HandleFunc("POST /api/estados", estadosHandler.CrearEstado)
-	protected.HandleFunc("PUT /api/estados/{id}", estadosHandler.ActualizarEstado)
-	protected.HandleFunc("DELETE /api/estados/{id}", estadosHandler.EliminarEstado)
+	// Rutas de Estados con permisos
+	protected.Handle("GET /api/estados",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionEstadosListar)(
+			http.HandlerFunc(estadosHandler.ObtenerEstados),
+		))
 
-	// Rutas de Auth protegidas
-	protected.HandleFunc("GET /api/auth/me", authHandler.GetCurrentUser)
-	protected.HandleFunc("GET /api/profile", profileHandler.GetProfile)
+	protected.Handle("GET /api/estados/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionEstadosVer)(
+			http.HandlerFunc(estadosHandler.ObtenerEstadoXid),
+		))
 
-	// Aplicar middleware de autenticación a las rutas protegidas
+	protected.Handle("POST /api/estados",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionEstadosCrear)(
+			http.HandlerFunc(estadosHandler.CrearEstado),
+		))
+
+	protected.Handle("PUT /api/estados/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionEstadosEditar)(
+			http.HandlerFunc(estadosHandler.ActualizarEstado),
+		))
+
+	protected.Handle("DELETE /api/estados/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionEstadosEliminar)(
+			http.HandlerFunc(estadosHandler.EliminarEstado),
+		))
+
+	protected.Handle("GET /api/profile",
+		authMiddleware.Handler(http.HandlerFunc(profileHandler.GetProfile)))
+
+	// Aplicar middleware de autenticación base a las rutas protegidas
 	mux.Handle("/api/estados", authMiddleware.Handler(protected))
 	mux.Handle("/api/estados/", authMiddleware.Handler(protected))
 	mux.Handle("/api/auth/me", authMiddleware.Handler(protected))

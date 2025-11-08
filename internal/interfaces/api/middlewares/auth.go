@@ -2,7 +2,6 @@ package middlewares
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 	"sync"
@@ -46,14 +45,6 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 		ctx := r.Context()
 		var user *auth.User
 
-		allCookies := r.Cookies()
-		if len(allCookies) > 0 {
-			for i, cookie := range allCookies {
-				fmt.Printf("   %d. %s = %s (Length: %d)\n",
-					i+1, cookie.Name, cookie.Value, len(cookie.Value))
-			}
-		}
-
 		if am.cookieSigner != nil && am.authService != nil {
 			cookie, err := r.Cookie("tk")
 			if err == nil && cookie.Value != "" {
@@ -80,12 +71,6 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 func (am *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		allCookies := r.Cookies()
-		if len(allCookies) > 0 {
-			for i, cookie := range allCookies {
-				fmt.Printf("   %d. %s = %s\n", i+1, cookie.Name, cookie.Value)
-			}
-		}
 
 		if am.cookieSigner != nil && am.authService != nil {
 			cookie, err := r.Cookie("tk")
@@ -112,4 +97,12 @@ func GetUserInfo(idUser string) (interface{}, bool) {
 // CleanUserCache limpia la caché de un usuario específico
 func CleanUserCache(idUser string) {
 	userCache.Delete(idUser)
+}
+
+func (am *AuthMiddleware) RequireAuthAndPermission(permsMiddleware *PermissionsMiddleware, requiredPermissions []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return am.Handler(
+			permsMiddleware.Handler(requiredPermissions)(next),
+		)
+	}
 }
