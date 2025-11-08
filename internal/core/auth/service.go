@@ -78,9 +78,8 @@ type ProfileResponse struct {
 }
 
 type AuthResponse struct {
-	User      *User               `json:"user"`
-	Token     *jwt.VerifyResponse `json:"token,omitempty"`
-	ExpiresAt time.Time           `json:"expires_at,omitempty"`
+	Message   string    `json:"message"`
+	ExpiresAt time.Time `json:"expires_at,omitempty"`
 }
 
 func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthResponse, string, time.Time, error) {
@@ -159,24 +158,6 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 		return nil, "", time.Time{}, fmt.Errorf("error generando cookie de autenticación: %v", err)
 	}
 
-	jwtToken, _, err := s.jwtService.GenerateJWTWithExpiry(jwt.JwtPayload{
-		IDUser:   usuarioRetrieved.ID,
-		Username: usuarioRetrieved.Username,
-		IDRol:    *usuarioRetrieved.IDRol,
-	}, time.Duration(s.config.JWTExpireTime)*time.Second)
-
-	var tokenResponse *jwt.VerifyResponse
-	if err == nil {
-		tokenResponse = &jwt.VerifyResponse{
-			UserInfo: &jwt.JwtPayload{
-				IDUser:   usuarioRetrieved.ID,
-				Username: usuarioRetrieved.Username,
-				IDRol:    *usuarioRetrieved.IDRol,
-			},
-			JWT: &jwtToken,
-		}
-	}
-
 	eventExists, err := s.redisService.Get(ctx, eventKey)
 	if err != nil || eventExists == "" {
 		err = s.redisService.Set(ctx, eventKey, "true", 1*time.Hour)
@@ -186,8 +167,7 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 	}
 
 	response := &AuthResponse{
-		User:      usuarioRetrieved,
-		Token:     tokenResponse,
+		Message:   "Login exitoso",
 		ExpiresAt: cookieData.ExpiresAt,
 	}
 
@@ -337,7 +317,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 	}
 
 	response := &AuthResponse{
-		User:      user,
+		Message:   "Login exitoso",
 		ExpiresAt: cookieData.ExpiresAt,
 	}
 

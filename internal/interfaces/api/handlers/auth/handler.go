@@ -2,7 +2,6 @@ package auth
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -10,6 +9,7 @@ import (
 	"api_go/internal/core/auth"
 	"api_go/internal/infrastructure/cookies"
 	"api_go/internal/interfaces/api/common"
+	"api_go/pkg/logger"
 )
 
 type AuthHandler struct {
@@ -59,7 +59,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	responseData := map[string]interface{}{
-		"user": authResponse.User,
+		"Message": authResponse.Message,
 	}
 
 	successResponse := common.NewSuccessResponse(responseData)
@@ -110,11 +110,11 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	if signedCookie != "" {
 		cookies.SetAuthCookie(w, signedCookie, expiresAt)
-		fmt.Printf("🎯 COOKIE SET IN REGISTER: %s\n", signedCookie)
+		logger.Info("Cookie de autenticación establecida tras registro", "username", req.Username)
 	}
 
 	responseData := map[string]interface{}{
-		"user": authResponse.User,
+		"Message": authResponse.Message,
 	}
 
 	successResponse := common.NewSuccessResponse(responseData)
