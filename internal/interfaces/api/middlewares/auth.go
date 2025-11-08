@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"regexp"
 	"strconv"
-	"strings"
 	"sync"
 
 	"api_go/internal/core/auth"
@@ -45,144 +43,63 @@ func (am *AuthMiddleware) SetAuthService(authService *auth.AuthService) {
 // Handler implementa el middleware de autenticación (requiere autenticación)
 func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extraer token del header
-		rawToken := r.Header.Get("Authorization")
-		if rawToken == "" {
-			rawToken = r.Header.Get("jwt")
-		}
-
-		if rawToken == "" {
-			response := common.NewErrorResponse(401, "No se ha proporcionado token")
-			common.WriteJSONResponse(w, response, 401)
-			return
-		}
-
-		// Eliminar prefijo "Bearer " si está presente
-		token := strings.TrimPrefix(rawToken, "Bearer ")
-
-		// Validar formato del token con expresión regular
-		jwtRegex := regexp.MustCompile(`^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$`)
-		if !jwtRegex.MatchString(token) {
-			response := common.NewErrorResponse(401, "El token proporcionado no tiene un formato válido")
-			common.WriteJSONResponse(w, response, 401)
-			return
-		}
-
-		// Verificar JWT
-		userInfo, err := am.jwtService.VerifyJWT(token)
-		if err != nil {
-			fmt.Printf("Error verifying JWT: %v\n", err)
-			response := common.NewErrorResponse(401, "Token inválido o expirado")
-			common.WriteJSONResponse(w, response, 401)
-			return
-		}
-
-		// ✅ CORREGIDO: Validación correcta del userInfo
-		if userInfo == nil || userInfo.UserInfo == nil || userInfo.UserInfo.IDUser == 0 {
-			response := common.NewErrorResponse(401, "Token inválido: información de usuario faltante")
-			common.WriteJSONResponse(w, response, 401)
-			return
-		}
-
-		// Almacenar usuario en caché
-		userID := userInfo.UserInfo.IDUser
-		if userID != 0 {
-			userCache.Store(userID, userInfo)
-		}
-
-		// ✅ CORREGIDO: Agregar userID al contexto (como string)
 		ctx := r.Context()
-		userIDStr := strconv.Itoa(userID)
-		ctx = context.WithValue(ctx, "userID", userIDStr)
+		var user *auth.User
 
-		// También mantener el userInfo completo por si se necesita
-		ctx = context.WithValue(ctx, "userInfo", userInfo)
+		allCookies := r.Cookies()
+		if len(allCookies) > 0 {
+			for i, cookie := range allCookies {
+				fmt.Printf("   %d. %s = %s (Length: %d)\n",
+					i+1, cookie.Name, cookie.Value, len(cookie.Value))
+			}
+		}
 
-		fmt.Printf("✅ Contexto actualizado con userID: %s\n", userIDStr)
+		if am.cookieSigner != nil && am.authService != nil {
+			cookie, err := r.Cookie("tk")
+			if err == nil && cookie.Value != "" {
+				user, err = am.authService.ValidateCookie(cookie.Value)
+				if err == nil && user != nil {
+					// Agregar usuario al contexto
+					ctx = context.WithValue(ctx, "user", user)
+					ctx = context.WithValue(ctx, "userID", strconv.Itoa(user.ID))
 
-		// Continuar con el siguiente handler
-		next.ServeHTTP(w, r.WithContext(ctx))
+					// Continuar con el siguiente handler
+					next.ServeHTTP(w, r.WithContext(ctx))
+					return
+				} else {
+					cookies.ClearAuthCookie(w)
+				}
+			}
+		}
+		response := common.NewErrorResponse(401, "Debe iniciar sesión para continuar")
+		common.WriteJSONResponse(w, response, 401)
 	})
 }
 
 // OptionalAuth implementa el middleware de autenticación opcional
 func (am *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Extraer token del header
-		rawToken := r.Header.Get("Authorization")
-		if rawToken == "" {
-			rawToken = r.Header.Get("jwt")
-		}
-
-		if rawToken == "" {
-			// No hay token, continuar sin usuario
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Eliminar prefijo "Bearer " si está presente
-		token := strings.TrimPrefix(rawToken, "Bearer ")
-		if token == rawToken {
-			// No es un token Bearer, continuar sin usuario
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Validar formato del token con expresión regular
-		jwtRegex := regexp.MustCompile(`^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$`)
-		if !jwtRegex.MatchString(token) {
-			// Token con formato inválido, continuar sin usuario
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Verificar JWT
-		userInfo, err := am.jwtService.VerifyJWT(token)
-		if err != nil {
-			// Token inválido, continuar sin usuario
-			fmt.Printf("⚠️ Token inválido en OptionalAuth: %v\n", err)
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Validar información del usuario
-		if userInfo == nil || userInfo.UserInfo == nil || userInfo.UserInfo.IDUser == 0 {
-			// Información de usuario faltante, continuar sin usuario
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		// Si tenemos authService, obtener usuario completo con permisos
-		var currentUser *auth.User
-		if am.authService != nil {
-			user, err := am.authRepo.RetrieveUserByID(r.Context(), userInfo.UserInfo.IDUser)
-			if err == nil && user != nil {
-				currentUser = user
-				fmt.Printf("✅ Usuario autenticado encontrado: ID=%d, Username=%s\n", user.ID, user.Username)
+		ctx := r.Context()
+		allCookies := r.Cookies()
+		if len(allCookies) > 0 {
+			for i, cookie := range allCookies {
+				fmt.Printf("   %d. %s = %s\n", i+1, cookie.Name, cookie.Value)
 			}
 		}
 
-		// Almacenar usuario en caché
-		userID := userInfo.UserInfo.IDUser
-		if userID != 0 {
-			userCache.Store(userID, userInfo)
+		if am.cookieSigner != nil && am.authService != nil {
+			cookie, err := r.Cookie("tk")
+			if err == nil && cookie.Value != "" {
+				user, err := am.authService.ValidateCookie(cookie.Value)
+				if err == nil && user != nil {
+					ctx = context.WithValue(ctx, "user", user)
+					ctx = context.WithValue(ctx, "userID", strconv.Itoa(user.ID))
+				} else {
+					cookies.ClearAuthCookie(w)
+				}
+			}
 		}
 
-		// Agregar información al contexto
-		ctx := r.Context()
-		userIDStr := strconv.Itoa(userID)
-		ctx = context.WithValue(ctx, "userID", userIDStr)
-		ctx = context.WithValue(ctx, "userInfo", userInfo)
-
-		// Agregar usuario completo al contexto si está disponible
-		if currentUser != nil {
-			ctx = context.WithValue(ctx, "user", currentUser)
-			fmt.Printf("✅ Usuario agregado al contexto: %s\n", currentUser.Username)
-		}
-
-		fmt.Printf("✅ OptionalAuth - Contexto actualizado con userID: %s\n", userIDStr)
-
-		// Continuar con el siguiente handler
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

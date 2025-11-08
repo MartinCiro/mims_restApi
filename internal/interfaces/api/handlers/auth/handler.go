@@ -56,7 +56,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	if signedCookie != "" {
 		cookies.SetAuthCookie(w, signedCookie, expiresAt)
-		fmt.Printf("🎯 COOKIE SET IN LOGIN: %s\n", signedCookie)
 	}
 
 	responseData := map[string]interface{}{

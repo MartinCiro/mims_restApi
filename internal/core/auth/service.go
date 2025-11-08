@@ -101,8 +101,6 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
 	}
 
-	logger.Info("✅ Usuario encontrado", "userID", usuarioRetrieved.ID, "email", usuarioRetrieved.Email)
-
 	usuario := NewUsuarioFromEncrypted(
 		usuarioRetrieved.Username,
 		usuarioRetrieved.PasswordHash,
@@ -115,8 +113,6 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 		logger.Error("❌ Contraseña inválida", "userID", usuarioRetrieved.ID)
 		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
 	}
-
-	logger.Info("✅ Contraseña válida", "userID", usuarioRetrieved.ID)
 
 	userCacheKey := fmt.Sprintf("user:%d", usuarioRetrieved.ID)
 	eventKey := fmt.Sprintf("event:usuario.logeado:%d", usuarioRetrieved.ID)
@@ -141,9 +137,7 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 		userDataWithPermissions := userData
 
 		userDataJSON, err := json.Marshal(userDataWithPermissions)
-		if err != nil {
-			log.Printf("Error marshaling user data for cache: %v", err)
-		} else {
+		if err == nil {
 			err = s.redisService.Set(ctx, userCacheKey, string(userDataJSON), 24*time.Hour)
 			if err != nil {
 				log.Printf("Error setting user cache: %v", err)
@@ -323,8 +317,6 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 		return nil, "", time.Time{}, fmt.Errorf("Ha ocurrido un error en el servidor, contacte al administrador")
 	}
 
-	logger.Info("✅ Usuario creado en BD", "userID", userID)
-
 	user, err := s.authPort.RetrieveUserByID(ctx, userID)
 	if err != nil {
 		return nil, "", time.Time{}, fmt.Errorf("error obteniendo usuario creado: %v", err)
@@ -343,8 +335,6 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 	if err != nil {
 		return nil, "", time.Time{}, fmt.Errorf("error generando cookie de autenticación: %v", err)
 	}
-
-	logger.Info("✅ Registro completado exitosamente", "userID", userID, "username", user.Username)
 
 	response := &AuthResponse{
 		User:      user,
