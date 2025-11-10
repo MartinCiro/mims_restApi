@@ -3,7 +3,6 @@ package routes
 import (
 	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"api_go/config"
@@ -31,9 +30,9 @@ func SetupRouter(app *app.App, cfg *config.Config) http.Handler {
 	mux := http.NewServeMux()
 
 	// Servir archivos estáticos
-	if cfg.IsDevelopment() {
+	/* if cfg.IsDevelopment() {
 		setupStaticFiles(mux)
-	}
+	} */
 
 	// Configurar todas las rutas
 	setupAllRoutes(mux, app)
@@ -43,7 +42,7 @@ func SetupRouter(app *app.App, cfg *config.Config) http.Handler {
 }
 
 // setupStaticFiles configura archivos estáticos
-func setupStaticFiles(mux *http.ServeMux) {
+/* func setupStaticFiles(mux *http.ServeMux) {
 	publicDir := "./public"
 
 	if _, err := os.Stat(publicDir); err == nil {
@@ -51,7 +50,7 @@ func setupStaticFiles(mux *http.ServeMux) {
 		mux.Handle("/api-docs/", http.StripPrefix("/api-docs", fs))
 		log.Println("📚 Serviendo documentación en /api-docs")
 	}
-}
+} */
 
 // setupAllRoutes configura todas las rutas (públicas y protegidas)
 func setupAllRoutes(mux *http.ServeMux, app *app.App) {
@@ -126,7 +125,6 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 
 	// Aplicar middleware de autenticación base a las rutas protegidas
 	mux.Handle("/api/estados", authMiddleware.Handler(protected))
-	mux.Handle("/api/estados/", authMiddleware.Handler(protected))
 	mux.Handle("/api/auth/me", authMiddleware.Handler(protected))
 	mux.Handle("/api/auth/logout", authMiddleware.Handler(protected))
 	mux.Handle("/api/profile", authMiddleware.Handler(protected))
