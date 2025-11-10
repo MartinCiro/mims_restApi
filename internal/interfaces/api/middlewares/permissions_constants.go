@@ -16,6 +16,11 @@ var (
 	PermissionUsuariosEditar = []string{"usuarios:editar", "usuarios:escribir"}
 )
 
+// Permisos para login
+var (
+	PermissionLoginLogout = []string{"login:logout", "login:cerrar_sesion"}
+)
+
 // Permisos administrativos
 var (
 	PermissionAdmin = []string{"admin", "administrador"}

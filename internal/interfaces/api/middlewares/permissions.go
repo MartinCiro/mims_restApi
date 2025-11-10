@@ -41,7 +41,6 @@ func (pm *PermissionsMiddleware) Handler(requiredPermissions []string) func(http
 
 			// Verificar permisos del usuario
 			if len(user.Permisos) == 0 {
-				logger.Warn("usuario sin permisos asignados", "user_id", user.ID)
 				response := common.NewErrorResponse(403, "No tiene permisos asignados")
 				common.WriteJSONResponse(w, response, 403)
 				return

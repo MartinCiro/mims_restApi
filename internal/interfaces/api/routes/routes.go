@@ -15,6 +15,17 @@ import (
 	"api_go/internal/interfaces/api/middlewares"
 )
 
+// responseWriter wrapper para interceptar status code
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
 // SetupRouter configura todas las rutas de la aplicación
 func SetupRouter(app *app.App, cfg *config.Config) http.Handler {
 	mux := http.NewServeMux()
@@ -73,7 +84,6 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	// Autenticación (públicas)
 	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
 	mux.Handle("POST /api/auth/register", authMiddleware.OptionalAuth(http.HandlerFunc(authHandler.Register)))
-	mux.HandleFunc("POST /api/auth/logout", authHandler.Logout)
 
 	// ========== RUTAS PROTEGIDAS ==========
 
@@ -84,6 +94,11 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	protected.Handle("GET /api/estados",
 		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionEstadosListar)(
 			http.HandlerFunc(estadosHandler.ObtenerEstados),
+		))
+
+	protected.Handle("POST /api/auth/logout",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionLoginLogout)(
+			http.HandlerFunc(authHandler.Logout),
 		))
 
 	protected.Handle("GET /api/estados/{id}",
@@ -113,6 +128,7 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	mux.Handle("/api/estados", authMiddleware.Handler(protected))
 	mux.Handle("/api/estados/", authMiddleware.Handler(protected))
 	mux.Handle("/api/auth/me", authMiddleware.Handler(protected))
+	mux.Handle("/api/auth/logout", authMiddleware.Handler(protected))
 	mux.Handle("/api/profile", authMiddleware.Handler(protected))
 }
 
@@ -182,15 +198,4 @@ func withRecovery(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-// responseWriter wrapper para interceptar status code
-type responseWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func (rw *responseWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
 }
