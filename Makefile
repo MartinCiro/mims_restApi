@@ -73,7 +73,7 @@ deploy:
 	@echo "=== Applying network policies... ==="
 	kubectl apply -f $(MANIFESTS_DIR)/shared/network-policies.yaml
 	@echo "✅ Deployment completed!"
-	@@timeout /t 5 >nul 2>&1 || sleep 5
+	@timeout 5 >nul 2>&1 || timeout 5 >nul 2>&1 || ping -n 6 127.0.0.1 >nul 2>&1 || sleep 5
 	@make status
 
 ## --- Gestión de Recursos Específicos ---
