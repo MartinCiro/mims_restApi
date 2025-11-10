@@ -1,9 +1,14 @@
 package repositories
 
 import (
+	"api_go/infrastructure/database/models"
 	"api_go/internal/infrastructure/database"
 	"context"
 	"fmt"
+
+	"api_go/pkg/logger"
+
+	"gorm.io/gorm"
 )
 
 type PermisoRepository struct {
@@ -17,31 +22,145 @@ func NewPermisoRepository(dbManager *database.DBManager) *PermisoRepository {
 }
 
 func (r *PermisoRepository) FindByRolID(ctx context.Context, rolID int) ([]string, error) {
-	fmt.Printf("🔍 Buscando permisos para rol: %d\n", rolID)
+	logger.Info("Buscando permisos para rol", "rolID", rolID)
 
-	var permisosDB []struct {
-		Nombre string `gorm:"column:nombre_permiso"`
-	}
+	var permisos []models.Permiso // ✅ Usar el modelo existente
 
-	// Usar join explícito
-	query := `
-        SELECT p.nombre_permiso
-        FROM permisos p
-        INNER JOIN rol_x_permisos rp ON p.id = rp.id_permiso 
-        WHERE rp.id_rol = ?
-    `
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Model(&models.Permiso{}).
+		Select("permisos.nombre_permiso").
+		Joins("INNER JOIN rol_x_permisos ON permisos.id = rol_x_permisos.id_permiso").
+		Where("rol_x_permisos.id_rol = ?", rolID).
+		Find(&permisos).Error
 
-	err := r.dbManager.FindWithJoin(ctx, &permisosDB, query, rolID)
 	if err != nil {
-		fmt.Printf("❌ Error buscando permisos: %v\n", err)
+		logger.Error("❌ Error buscando permisos para rol", "error", err)
 		return nil, fmt.Errorf("error buscando permisos: %v", err)
 	}
 
-	permisos := make([]string, len(permisosDB))
-	for i, p := range permisosDB {
-		permisos[i] = p.Nombre
+	// Extraer solo los nombres de los permisos
+	permisoNombres := make([]string, len(permisos))
+	for i, permiso := range permisos {
+		permisoNombres[i] = permiso.NombrePermiso
 	}
 
-	fmt.Printf("✅ Permisos encontrados: %d\n", len(permisos))
+	logger.Info("✅ Permisos encontrados para rol", "rolID", rolID, "count", len(permisoNombres))
+	return permisoNombres, nil
+}
+
+// FindByID busca un permiso por ID
+func (r *PermisoRepository) FindByID(ctx context.Context, id int) (*models.Permiso, error) {
+	logger.Info("🔍 Buscando permiso por ID", "ID", id)
+
+	var permiso models.Permiso
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		First(&permiso, id).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			logger.Error("❌ Permiso no encontrado", "ID", id)
+			return nil, nil
+		}
+		logger.Error("❌ Error buscando permiso por ID", "error", err)
+		return nil, fmt.Errorf("error buscando permiso por ID: %v", err)
+	}
+
+	logger.Info("✅ Permiso encontrado", "ID", permiso.ID, "nombre", permiso.NombrePermiso)
+	return &permiso, nil
+}
+
+// FindAll busca todos los permisos
+func (r *PermisoRepository) FindAll(ctx context.Context) ([]models.Permiso, error) {
+	logger.Info("🔍 Buscando todos los permisos")
+
+	var permisos []models.Permiso // ✅ Usar el modelo existente
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Find(&permisos).Error
+
+	if err != nil {
+		logger.Error("❌ Error buscando todos los permisos", "error", err)
+		return nil, fmt.Errorf("error buscando todos los permisos: %v", err)
+	}
+
+	logger.Info("✅ Permisos encontrados", "count", len(permisos))
 	return permisos, nil
+}
+
+// FindByNombre busca permisos por nombre
+func (r *PermisoRepository) FindByNombre(ctx context.Context, nombre string) ([]models.Permiso, error) {
+	logger.Info("🔍 Buscando permisos por nombre", "nombre", nombre)
+
+	var permisos []models.Permiso // ✅ Usar el modelo existente
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Where("nombre_permiso LIKE ?", "%"+nombre+"%").
+		Find(&permisos).Error
+
+	if err != nil {
+		logger.Error("❌ Error buscando permisos por nombre", "error", err)
+		return nil, fmt.Errorf("error buscando permisos por nombre: %v", err)
+	}
+
+	logger.Info("✅ Permisos encontrados por nombre", "count", len(permisos))
+	return permisos, nil
+}
+
+// Create crea un nuevo permiso
+func (r *PermisoRepository) Create(ctx context.Context, permiso *models.Permiso) error {
+	logger.Info("🔍 Creando nuevo permiso", "nombre", permiso.NombrePermiso)
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Create(permiso).Error
+
+	if err != nil {
+		logger.Error("❌ Error creando permiso", "error", err)
+		return fmt.Errorf("error creando permiso: %v", err)
+	}
+
+	logger.Info("✅ Permiso creado", "ID", permiso.ID, "nombre", permiso.NombrePermiso)
+	return nil
+}
+
+// AsignarPermisoARol asigna un permiso a un rol
+func (r *PermisoRepository) AsignarPermisoARol(ctx context.Context, rolID int, permisoID int) error {
+	logger.Info("Asignando permiso a rol", "rolID", rolID, "permisoID", permisoID)
+
+	rolXPermiso := models.RolXPermiso{
+		IDRol:     rolID,
+		IDPermiso: permisoID,
+	}
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Create(&rolXPermiso).Error
+
+	if err != nil {
+		logger.Error("❌ Error asignando permiso al rol", "error", err)
+		return fmt.Errorf("error asignando permiso al rol: %v", err)
+	}
+
+	logger.Info("✅ Permiso asignado a rol", "rolID", rolID, "permisoID", permisoID)
+	return nil
+}
+
+// RemoverPermisoDeRol remueve un permiso de un rol
+func (r *PermisoRepository) RemoverPermisoDeRol(ctx context.Context, rolID int, permisoID int) error {
+	logger.Info("Removiendo permiso de rol", "rolID", rolID, "permisoID", permisoID)
+
+	result := r.dbManager.GetDB().WithContext(ctx).
+		Where("id_rol = ? AND id_permiso = ?", rolID, permisoID).
+		Delete(&models.RolXPermiso{})
+
+	if result.Error != nil {
+		logger.Error("❌ Error removiendo permiso del rol", "error", result.Error)
+		return fmt.Errorf("error removiendo permiso del rol: %v", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		logger.Error("❌ Asignación no encontrada", "rolID", rolID, "permisoID", permisoID)
+		return fmt.Errorf("asignación no encontrada")
+	}
+	logger.Info("✅ Permiso removido del rol", "rolID", rolID, "permisoID", permisoID)
+	return nil
 }

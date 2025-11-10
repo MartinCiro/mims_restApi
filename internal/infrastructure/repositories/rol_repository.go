@@ -1,8 +1,10 @@
 package repositories
 
 import (
+	"api_go/infrastructure/database/models"
 	"api_go/internal/core/auth"
 	"api_go/internal/infrastructure/database"
+	"api_go/pkg/logger"
 	"context"
 	"fmt"
 
@@ -22,58 +24,157 @@ func NewRolRepository(dbManager *database.DBManager) *RolRepository {
 	}
 }
 
-// FindByID simula: prisma.rol.findUnique({ where: { id } })
-func (r *RolRepository) FindByID(ctx context.Context, id int) (*Rol, error) {
-	fmt.Printf("🔍 Buscando rol: %d\n", id)
+// FindByID busca un rol por ID
+func (r *RolRepository) FindByID(ctx context.Context, id int) (*models.Rol, error) {
+	logger.Info("Buscando rol por ID", "ID", id)
 
-	var rolDB struct {
-		ID     int    `gorm:"column:id"`
-		Nombre string `gorm:"column:nombre_rol"`
-	}
+	var rol models.Rol
 
-	err := r.dbManager.FindUnique(ctx, "roles", &rolDB, map[string]interface{}{
-		"id": id,
-	})
+	err := r.dbManager.GetDB().WithContext(ctx).
+		First(&rol, id).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			fmt.Printf("❌ Rol no encontrado: %d\n", id)
+			logger.Error("❌ Rol no encontrado", "ID", id)
 			return nil, nil
 		}
-		fmt.Printf("❌ Error buscando rol: %v\n", err)
-		return nil, fmt.Errorf("error buscando rol: %v", err)
+		logger.Error("❌ Error buscando rol por ID", "error", err)
+		return nil, fmt.Errorf("error buscando rol por ID: %v", err)
 	}
 
-	return &Rol{
-		ID:     rolDB.ID,
-		Nombre: rolDB.Nombre,
-	}, nil
+	logger.Info("✅ Rol encontrado", "ID", rol.ID, "NombreRol", rol.NombreRol)
+	return &rol, nil
 }
 
 // FindRolIDByName busca un rol por nombre y retorna su ID
 func (r *RolRepository) FindRolIDByName(ctx context.Context, nombre string) (int, error) {
-	fmt.Printf("🔍 Buscando rol por nombre: %s\n", nombre)
+	logger.Info("Buscando rol por nombre", "nombre", nombre)
 
-	var rolDB struct {
-		ID     int    `gorm:"column:id"`
-		Nombre string `gorm:"column:nombre"`
-	}
+	var rol models.Rol
 
-	err := r.dbManager.FindUniqueByField(ctx, "roles", &rolDB, "nombre_rol", nombre)
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Model(&models.Rol{}).
+		Where("nombre_rol = ?", nombre).
+		First(&rol).Error
+
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			fmt.Printf("❌ Rol no encontrado: %s\n", nombre)
+			logger.Error("❌ Rol no encontrado", "nombre", nombre)
 			return 0, nil
 		}
-		fmt.Printf("❌ Error buscando rol por nombre: %v\n", err)
+		logger.Error("❌ Error buscando rol por nombre", "error", err)
 		return 0, fmt.Errorf("error buscando rol por nombre: %v", err)
 	}
 
-	fmt.Printf("✅ Rol encontrado: ID=%d, Nombre=%s\n", rolDB.ID, rolDB.Nombre)
-	return rolDB.ID, nil
+	logger.Info("✅ Rol encontrado", "ID", rol.ID, "NombreRol", rol.NombreRol)
+	return rol.ID, nil
 }
 
-type Rol struct {
-	ID     int    `json:"id"`
-	Nombre string `json:"nombre_rol"`
+// FindAll busca todos los roles
+func (r *RolRepository) FindAll(ctx context.Context) ([]models.Rol, error) {
+	logger.Info("Buscando todos los roles")
+
+	var roles []models.Rol
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Find(&roles).Error
+
+	if err != nil {
+		logger.Error("❌ Error buscando todos los roles", "error", err)
+		return nil, fmt.Errorf("error buscando todos los roles: %v", err)
+	}
+
+	logger.Info("✅ Roles encontrados", "count", len(roles))
+	return roles, nil
+}
+
+// FindByNombre busca roles por nombre (búsqueda parcial)
+func (r *RolRepository) FindByNombre(ctx context.Context, nombre string) ([]models.Rol, error) {
+	logger.Info("🔍 Buscando roles por nombre", "nombre", nombre)
+
+	var roles []models.Rol
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Where("nombre_rol LIKE ?", "%"+nombre+"%").
+		Find(&roles).Error
+
+	if err != nil {
+		logger.Error("❌ Error buscando roles por nombre", "error", err)
+		return nil, fmt.Errorf("error buscando roles por nombre: %v", err)
+	}
+
+	logger.Info("✅ Roles encontrados por nombre", "count", len(roles))
+	return roles, nil
+}
+
+// Create crea un nuevo rol
+func (r *RolRepository) Create(ctx context.Context, rol *models.Rol) error {
+	logger.Info("Creando nuevo rol", "nombre", rol.NombreRol)
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Create(rol).Error
+
+	if err != nil {
+		logger.Error("❌ Error creando rol", "error", err)
+		return fmt.Errorf("error creando rol: %v", err)
+	}
+
+	logger.Info("✅ Rol creado", "ID", rol.ID, "NombreRol", rol.NombreRol)
+	return nil
+}
+
+// Update actualiza un rol existente
+func (r *RolRepository) Update(ctx context.Context, rol *models.Rol) error {
+	logger.Info("Actualizando rol", "ID", rol.ID)
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Save(rol).Error
+
+	if err != nil {
+		logger.Error("❌ Error actualizando rol", "error", err)
+		return fmt.Errorf("error actualizando rol: %v", err)
+	}
+
+	logger.Info("✅ Rol actualizado", "ID", rol.ID)
+	return nil
+}
+
+// Delete elimina un rol por ID
+func (r *RolRepository) Delete(ctx context.Context, id int) error {
+	logger.Info("Eliminando rol", "ID", id)
+
+	result := r.dbManager.GetDB().WithContext(ctx).
+		Delete(&models.Rol{}, id)
+
+	if result.Error != nil {
+		logger.Error("❌ Error eliminando rol", "error", result.Error)
+		return fmt.Errorf("error eliminando rol: %v", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		logger.Error("❌ Rol no encontrado para eliminar", "ID", id)
+		return fmt.Errorf("rol no encontrado")
+	}
+
+	logger.Info("✅ Rol eliminado", "ID", id)
+	return nil
+}
+
+// GetRolesConPermisos obtiene roles con sus permisos asociados
+func (r *RolRepository) GetRolesConPermisos(ctx context.Context) ([]models.Rol, error) {
+	logger.Info("Buscando roles con permisos")
+
+	var roles []models.Rol
+
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Preload("Permisos").
+		Find(&roles).Error
+
+	if err != nil {
+		logger.Error("❌ Error buscando roles con permisos", "error", err)
+		return nil, fmt.Errorf("error buscando roles con permisos: %v", err)
+	}
+
+	logger.Info("✅ Roles con permisos encontrados", "count", len(roles))
+	return roles, nil
 }

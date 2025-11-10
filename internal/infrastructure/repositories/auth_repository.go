@@ -68,8 +68,8 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 		if err != nil {
 			logger.Warn("⚠️ Error obteniendo rol (continuando)", "error", err)
 		} else if rol != nil {
-			usuario.RolNombre = rol.Nombre
-			logger.Info("✅ Rol del usuario", "rol", rol.Nombre)
+			usuario.RolNombre = rol.NombreRol
+			logger.Info("✅ Rol del usuario", "rol", rol.NombreRol)
 		}
 	}
 
@@ -102,8 +102,8 @@ func (a *AuthAdapter) RetrieveUserByID(ctx context.Context, userID int) (*auth.U
 		if err != nil {
 			logger.Warn("⚠️ Error obteniendo rol (continuando)", "error", err)
 		} else if rol != nil {
-			usuario.RolNombre = rol.Nombre
-			logger.Info("✅ Rol del usuario", "rol", rol.Nombre)
+			usuario.RolNombre = rol.NombreRol
+			logger.Info("✅ Rol del usuario", "rol", rol.NombreRol)
 		}
 	}
 
