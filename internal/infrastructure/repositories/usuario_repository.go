@@ -1,12 +1,13 @@
 package repositories
 
 import (
-	"api_go/infrastructure/database/models"
 	"api_go/internal/core/auth"
 	"api_go/internal/infrastructure/database"
+	"api_go/internal/infrastructure/database/models"
 	"api_go/pkg/logger"
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"gorm.io/gorm"
@@ -26,8 +27,6 @@ func NewUsuarioRepository(dbManager *database.DBManager) *UsuarioRepository {
 }
 
 func (r *UsuarioRepository) FindByEmailOrUsername(ctx context.Context, field, value string) (*auth.User, error) {
-	logger.Info("🔍 Buscando usuario", "campo", field, "valor", value)
-
 	var usuario models.Usuario
 
 	query := r.dbManager.GetDB().WithContext(ctx).Model(&models.Usuario{})
@@ -44,17 +43,10 @@ func (r *UsuarioRepository) FindByEmailOrUsername(ctx context.Context, field, va
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			logger.Info("❌ Usuario no encontrado", "campo", field, "valor", value)
 			return nil, nil
 		}
-		logger.Error("❌ Error buscando usuario", "error", err, "campo", field, "valor", value)
 		return nil, fmt.Errorf("error buscando usuario: %v", err)
 	}
-
-	logger.Info("✅ Usuario encontrado",
-		"documento", usuario.Documento,
-		"email", usuario.Email,
-		"nom_user", usuario.NomUser)
 
 	return &auth.User{
 		ID:           usuario.Documento,
@@ -68,8 +60,6 @@ func (r *UsuarioRepository) FindByEmailOrUsername(ctx context.Context, field, va
 
 // FindByUsername busca usuario por email
 func (r *UsuarioRepository) FindByUsername(ctx context.Context, email string) (*auth.User, error) {
-	logger.Info("🔍 Buscando usuario por email", "email", email)
-
 	var usuario models.Usuario
 
 	err := r.dbManager.GetDB().WithContext(ctx).
@@ -79,16 +69,11 @@ func (r *UsuarioRepository) FindByUsername(ctx context.Context, email string) (*
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			logger.Info("❌ Usuario no encontrado", "email", email)
 			return nil, nil
 		}
 		logger.Error("❌ Error buscando usuario por email", "error", err, "email", email)
 		return nil, fmt.Errorf("error buscando usuario: %v", err)
 	}
-
-	logger.Info("✅ Usuario encontrado",
-		"documento", usuario.Documento,
-		"nom_user", usuario.NomUser)
 
 	return &auth.User{
 		ID:           usuario.Documento,
@@ -102,27 +87,21 @@ func (r *UsuarioRepository) FindByUsername(ctx context.Context, email string) (*
 
 // FindByID busca un usuario por documento (que es el ID)
 func (r *UsuarioRepository) FindByID(ctx context.Context, userID int) (*auth.User, error) {
-	logger.Info("🔍 Buscando usuario por ID", "user_id", userID)
-
 	var usuario models.Usuario
+	documentoStr := strconv.FormatInt(int64(userID), 10)
 
 	err := r.dbManager.GetDB().WithContext(ctx).
 		Model(&models.Usuario{}).
-		Where("documento = ?", userID).
+		Where("documento = ?", documentoStr).
 		First(&usuario).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
-			logger.Info("❌ Usuario no encontrado", "user_id", userID)
 			return nil, fmt.Errorf("usuario no encontrado")
 		}
 		logger.Error("❌ Error buscando usuario por ID", "error", err, "user_id", userID)
 		return nil, fmt.Errorf("error buscando usuario por ID: %v", err)
 	}
-
-	logger.Info("✅ Usuario encontrado por ID",
-		"documento", usuario.Documento,
-		"nom_user", usuario.NomUser)
 
 	return &auth.User{
 		ID:           usuario.Documento,
@@ -135,41 +114,39 @@ func (r *UsuarioRepository) FindByID(ctx context.Context, userID int) (*auth.Use
 }
 
 // CreateUser crea un nuevo usuario
+// CreateUser crea un nuevo usuario (versión alternativa)
 func (r *UsuarioRepository) CreateUser(ctx context.Context, usuario *auth.Usuario, email string) (int, error) {
-	// Generar documento único (usando timestamp)
-	documento := int(time.Now().UnixNano() / 1000000) // Milisegundos como int
+	// Generar documento único
+	documento := int(time.Now().UnixNano() / 1000000)
+	documentoStr := strconv.Itoa(documento)
 
-	dbUser := &models.Usuario{
-		Documento: documento,
-		Nombres:   usuario.Username,
-		Apellido:  "Usuario", // Valor por defecto
-		Email:     email,
-		NomUser:   usuario.Username,
-		Pass:      usuario.GetEncryptedPassword(),
-		IDRol:     *usuario.IDRol,
-		EstadoID:  *usuario.IDEstado,
+	// ✅ Usar mapa para evitar problemas de tipo
+	userData := map[string]interface{}{
+		"documento":      documentoStr,
+		"nombres":        usuario.Username,
+		"apellido":       "Usuario",
+		"email":          email,
+		"nom_user":       usuario.Username,
+		"pass":           usuario.GetEncryptedPassword(),
+		"id_rol":         *usuario.IDRol,
+		"estado_id":      *usuario.IDEstado,
+		"fecha_registro": time.Now(),
 	}
 
 	result := r.dbManager.GetDB().WithContext(ctx).
-		Create(dbUser)
+		Table("usuarios").
+		Create(userData)
 
 	if result.Error != nil {
 		logger.Error("❌ Error creando usuario", "error", result.Error, "email", email)
 		return 0, result.Error
 	}
 
-	logger.Info("✅ Usuario creado",
-		"documento", documento,
-		"email", email,
-		"nom_user", usuario.Username)
-
 	return documento, nil
 }
 
 // UpdateUser actualiza un usuario existente
 func (r *UsuarioRepository) UpdateUser(ctx context.Context, userID int, updates map[string]interface{}) error {
-	logger.Info("🔍 Actualizando usuario", "user_id", userID)
-
 	result := r.dbManager.GetDB().WithContext(ctx).
 		Model(&models.Usuario{}).
 		Where("documento = ?", userID).
@@ -181,18 +158,14 @@ func (r *UsuarioRepository) UpdateUser(ctx context.Context, userID int, updates 
 	}
 
 	if result.RowsAffected == 0 {
-		logger.Info("❌ Usuario no encontrado para actualizar", "user_id", userID)
 		return fmt.Errorf("usuario no encontrado")
 	}
 
-	logger.Info("✅ Usuario actualizado", "user_id", userID)
 	return nil
 }
 
 // DeleteUser elimina un usuario por ID
 func (r *UsuarioRepository) DeleteUser(ctx context.Context, userID int) error {
-	logger.Info("🔍 Eliminando usuario", "user_id", userID)
-
 	result := r.dbManager.GetDB().WithContext(ctx).
 		Where("documento = ?", userID).
 		Delete(&models.Usuario{})
@@ -203,18 +176,14 @@ func (r *UsuarioRepository) DeleteUser(ctx context.Context, userID int) error {
 	}
 
 	if result.RowsAffected == 0 {
-		logger.Info("❌ Usuario no encontrado para eliminar", "user_id", userID)
 		return fmt.Errorf("usuario no encontrado")
 	}
 
-	logger.Info("✅ Usuario eliminado", "user_id", userID)
 	return nil
 }
 
 // FindAll busca todos los usuarios
 func (r *UsuarioRepository) FindAll(ctx context.Context) ([]models.Usuario, error) {
-	logger.Info("🔍 Buscando todos los usuarios")
-
 	var usuarios []models.Usuario
 
 	err := r.dbManager.GetDB().WithContext(ctx).
@@ -225,14 +194,11 @@ func (r *UsuarioRepository) FindAll(ctx context.Context) ([]models.Usuario, erro
 		return nil, fmt.Errorf("error buscando todos los usuarios: %v", err)
 	}
 
-	logger.Info("✅ Usuarios encontrados", "cantidad", len(usuarios))
 	return usuarios, nil
 }
 
 // FindByRol busca usuarios por rol
 func (r *UsuarioRepository) FindByRol(ctx context.Context, rolID int) ([]models.Usuario, error) {
-	logger.Info("🔍 Buscando usuarios por rol", "rol_id", rolID)
-
 	var usuarios []models.Usuario
 
 	err := r.dbManager.GetDB().WithContext(ctx).
@@ -244,6 +210,5 @@ func (r *UsuarioRepository) FindByRol(ctx context.Context, rolID int) ([]models.
 		return nil, fmt.Errorf("error buscando usuarios por rol: %v", err)
 	}
 
-	logger.Info("✅ Usuarios encontrados por rol", "rol_id", rolID, "cantidad", len(usuarios))
 	return usuarios, nil
 }

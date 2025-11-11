@@ -3,7 +3,6 @@ package middlewares
 import (
 	"context"
 	"net/http"
-	"strconv"
 	"sync"
 
 	"api_go/internal/core/auth"
@@ -52,7 +51,7 @@ func (am *AuthMiddleware) Handler(next http.Handler) http.Handler {
 				if err == nil && user != nil {
 					// Agregar usuario al contexto
 					ctx = context.WithValue(ctx, "user", user)
-					ctx = context.WithValue(ctx, "userID", strconv.Itoa(user.ID))
+					ctx = context.WithValue(ctx, "userID", user.ID)
 
 					// Continuar con el siguiente handler
 					next.ServeHTTP(w, r.WithContext(ctx))
@@ -78,7 +77,7 @@ func (am *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
 				user, err := am.authService.ValidateCookie(cookie.Value)
 				if err == nil && user != nil {
 					ctx = context.WithValue(ctx, "user", user)
-					ctx = context.WithValue(ctx, "userID", strconv.Itoa(user.ID))
+					ctx = context.WithValue(ctx, "userID", user.ID)
 				} else {
 					cookies.ClearAuthCookie(w)
 				}

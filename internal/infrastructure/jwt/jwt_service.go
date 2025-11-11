@@ -14,7 +14,7 @@ type JWTService struct {
 }
 
 type JwtPayload struct {
-	IDUser   int    `json:"id_user"`
+	IDUser   string `json:"id_user"`
 	Username string `json:"username"`
 	IDRol    int    `json:"id_rol"`
 	Doc      string `json:"doc"`
@@ -111,7 +111,7 @@ func (js *JWTService) decodeWithoutVerification(tokenString string) (*JwtPayload
 	}
 
 	// ✅ CORREGIDO: Validación correcta
-	if claims.IDUser == 0 {
+	if len(claims.IDUser) == 0 {
 		return nil, errors.New("el JWT es inválido: falta id_user")
 	}
 

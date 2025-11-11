@@ -2,6 +2,7 @@ package middlewares
 
 import (
 	"net/http"
+	"runtime/debug"
 	"strings"
 
 	"api_go/internal/core/auth"
@@ -20,10 +21,22 @@ func NewPermissionsMiddleware(redisService *redis.Cache) *PermissionsMiddleware 
 	}
 }
 
-// Handler verifica los permisos del usuario
 func (pm *PermissionsMiddleware) Handler(requiredPermissions []string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			defer func() {
+				if err := recover(); err != nil {
+					logger.Error("⚠️ Panic en middleware de permisos",
+						"error", err,
+						"path", r.URL.Path,
+						"method", r.Method,
+						"next_is_nil", next == nil,
+						"stack", debug.Stack()) // ✅ AGREGAR STACK TRACE
+					response := common.NewErrorResponse(500, "Error interno del servidor")
+					common.WriteJSONResponse(w, response, 500)
+				}
+			}()
+
 			// Si no hay permisos requeridos, continuar
 			if len(requiredPermissions) == 0 {
 				next.ServeHTTP(w, r)
@@ -46,12 +59,6 @@ func (pm *PermissionsMiddleware) Handler(requiredPermissions []string) func(http
 				return
 			}
 
-			logger.Debug("verificando permisos",
-				"user_id", user.ID,
-				"username", user.Username,
-				"required_permissions", requiredPermissions,
-				"user_permissions", user.Permisos)
-
 			// Verificar si el usuario tiene al menos uno de los permisos requeridos
 			hasPermission := pm.hasAnyPermission(user.Permisos, requiredPermissions)
 			if !hasPermission {
@@ -65,11 +72,14 @@ func (pm *PermissionsMiddleware) Handler(requiredPermissions []string) func(http
 				return
 			}
 
-			logger.Debug("permisos verificados exitosamente",
-				"user_id", user.ID,
-				"username", user.Username,
-				"required_permissions", requiredPermissions)
-
+			if next == nil {
+				logger.Error("❌ CRÍTICO: Next handler es NIL",
+					"path", r.URL.Path,
+					"method", r.Method)
+				response := common.NewErrorResponse(500, "Error de configuración: handler no disponible")
+				common.WriteJSONResponse(w, response, 500)
+				return
+			}
 			next.ServeHTTP(w, r)
 		})
 	}
@@ -85,23 +95,6 @@ func (pm *PermissionsMiddleware) hasAnyPermission(userPermisos []string, require
 		}
 	}
 	return false
-}
-
-// hasAllPermission verifica si el usuario tiene TODOS los permisos requeridos
-func (pm *PermissionsMiddleware) hasAllPermission(userPermisos []string, requiredPermissions []string) bool {
-	for _, requiredPerm := range requiredPermissions {
-		found := false
-		for _, userPerm := range userPermisos {
-			if strings.EqualFold(trimPermission(userPerm), trimPermission(requiredPerm)) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			return false
-		}
-	}
-	return true
 }
 
 // trimPermission limpia espacios y convierte a minúsculas

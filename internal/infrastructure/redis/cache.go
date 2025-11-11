@@ -59,13 +59,37 @@ func (c *Cache) Set(ctx context.Context, key string, value interface{}, ttl ...t
 		expiration = ttl[0]
 	}
 
-	// Serializar valor a JSON
-	jsonValue, err := json.Marshal(value)
-	if err != nil {
-		return fmt.Errorf("error serializando valor para Redis: %v", err)
+	var finalValue interface{} = value
+
+	// ✅ DETECTAR si ya es un JSON string para no serializar dos veces
+	switch v := value.(type) {
+	case string:
+		// Intentar detectar si es JSON válido
+		var js json.RawMessage
+		if json.Unmarshal([]byte(v), &js) == nil {
+			// Es JSON válido, guardar como string directamente
+			finalValue = v
+		} else {
+			// No es JSON, serializar normalmente
+			jsonValue, err := json.Marshal(value)
+			if err != nil {
+				return fmt.Errorf("error serializando valor para Redis: %v", err)
+			}
+			finalValue = string(jsonValue)
+		}
+	case []byte:
+		// Ya es bytes, usar directamente
+		finalValue = v
+	default:
+		// Serializar otros tipos
+		jsonValue, err := json.Marshal(value)
+		if err != nil {
+			return fmt.Errorf("error serializando valor para Redis: %v", err)
+		}
+		finalValue = string(jsonValue)
 	}
 
-	err = c.client.Set(ctx, key, jsonValue, expiration).Err()
+	err := c.client.Set(ctx, key, finalValue, expiration).Err()
 	if err != nil {
 		return fmt.Errorf("error guardando en Redis: %v", err)
 	}

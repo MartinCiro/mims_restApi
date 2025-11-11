@@ -1,24 +1,20 @@
 package estados
 
-// CreateEstadoRequest DTO para crear estado (desde API)
 type CreateEstadoRequest struct {
-	Nombre      string  `json:"nombre" binding:"required"`
-	Descripcion *string `json:"descripcion,omitempty"`
+	Nombre      string  `json:"nombre" validate:"required,min=1,max=100"`
+	Descripcion *string `json:"descripcion,omitempty" validate:"omitempty,max=255"`
 }
 
-// UpdateEstadoRequest DTO para actualizar estado (desde API)
 type UpdateEstadoRequest struct {
-	ID          int     `json:"id" binding:"required"`
-	Nombre      string  `json:"nombre" binding:"required"`
-	Descripcion *string `json:"descripcion,omitempty"`
+	ID          int     `json:"id" validate:"required,min=1"`
+	Nombre      string  `json:"nombre" validate:"required,min=1,max=100"`
+	Descripcion *string `json:"descripcion,omitempty" validate:"omitempty,max=255"`
 }
 
-// GetEstadoRequest DTO para obtener estado por ID (desde API)
 type GetEstadoRequest struct {
-	ID int `json:"id" binding:"required"`
+	ID int `json:"id" validate:"required,min=1"`
 }
 
-// EstadoResponse DTO para respuesta de estado (hacia API)
 type EstadoResponse struct {
 	ID          int     `json:"id"`
 	Nombre      string  `json:"nombre"`

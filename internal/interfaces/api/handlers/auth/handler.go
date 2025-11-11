@@ -9,7 +9,6 @@ import (
 	"api_go/internal/core/auth"
 	"api_go/internal/infrastructure/cookies"
 	"api_go/internal/interfaces/api/common"
-	"api_go/pkg/logger"
 )
 
 type AuthHandler struct {
@@ -29,14 +28,17 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response := common.NewErrorResponse(400, "Solicitud inválida")
-		common.WriteJSONResponse(w, response, 400)
+		common.WriteSimpleError(w, "Solicitud inválida", 400)
 		return
 	}
 
 	if req.Email == "" {
-		response := common.NewErrorResponse(400, "El email es requerido")
-		common.WriteJSONResponse(w, response, 400)
+		common.WriteSimpleError(w, "El email es requerido", 400)
+		return
+	}
+
+	if req.Password == "" {
+		common.WriteSimpleError(w, "La contraseña es requerida", 400)
 		return
 	}
 
@@ -49,8 +51,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	authResponse, signedCookie, expiresAt, err := h.authService.LoginUser(ctx, loginReq)
 	if err != nil {
-		errorResponse := common.NewErrorResponse(401, err.Error())
-		common.WriteJSONResponse(w, errorResponse, 401)
+		common.WriteSimpleError(w, err.Error(), 401)
 		return
 	}
 
@@ -58,11 +59,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		cookies.SetAuthCookie(w, signedCookie, expiresAt)
 	}
 
-	responseData := map[string]interface{}{
-		"Message": authResponse.Message,
-	}
-
-	successResponse := common.NewSuccessResponse(responseData)
+	successResponse := common.NewSuccessResponse(authResponse.Message)
 	common.WriteJSONResponse(w, successResponse, 200)
 }
 
@@ -110,7 +107,6 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	if signedCookie != "" {
 		cookies.SetAuthCookie(w, signedCookie, expiresAt)
-		logger.Info("Cookie de autenticación establecida tras registro", "username", req.Username)
 	}
 
 	responseData := map[string]interface{}{

@@ -64,14 +64,14 @@ type LoginResponse struct {
 }
 
 type UserCacheData struct {
-	IDUser   int      `json:"id_user"`
+	IDUser   string   `json:"id_user"`
 	Nombre   string   `json:"nombre"`
 	IDRol    *int     `json:"id_rol"`
-	Permisos []string `json:"permisos,omitempty"`
+	Permisos []string `json:"permisos"`
 }
 
 type ProfileResponse struct {
-	ID       int      `json:"id"`
+	ID       string   `json:"id"`
 	Nombre   string   `json:"nombre"`
 	Rol      string   `json:"rol"`
 	Permisos []string `json:"permisos,omitempty"`
@@ -87,15 +87,13 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
 	}
 
-	logger.Info("🔍 Iniciando login", "email", req.Email)
-
 	usuarioRetrieved, err := s.authPort.RetrieveUser(ctx, AuthData{Email: req.Email})
 	if err != nil {
 		logger.Error("❌ Error buscando usuario", "email", req.Email, "error", err)
 		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
 	}
 
-	if usuarioRetrieved == nil || usuarioRetrieved.ID == 0 {
+	if usuarioRetrieved == nil || usuarioRetrieved.ID == "" {
 		logger.Error("❌ Usuario no encontrado", "email", req.Email)
 		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
 	}
@@ -109,12 +107,29 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 
 	isPasswordValid := usuario.ComparePassword(req.Password, s.passwordService)
 	if !isPasswordValid {
-		logger.Error("❌ Contraseña inválida", "userID", usuarioRetrieved.ID)
 		return nil, "", time.Time{}, fmt.Errorf("email o contraseña inválida")
 	}
 
-	userCacheKey := fmt.Sprintf("user:%d", usuarioRetrieved.ID)
-	eventKey := fmt.Sprintf("event:usuario.logeado:%d", usuarioRetrieved.ID)
+	// ✅ OBTENER PERMISOS PARA EL USUARIO
+	permisos, err := s.authPort.GetPermissionsByRoleID(ctx, *usuarioRetrieved.IDRol)
+	if err != nil {
+		logger.Error("❌ Error obteniendo permisos durante login",
+			"userID", usuarioRetrieved.ID,
+			"roleID", *usuarioRetrieved.IDRol,
+			"error", err)
+		return nil, "", time.Time{}, fmt.Errorf("error obteniendo permisos del usuario: %v", err)
+	}
+
+	// ✅ VERIFICAR QUE EL USUARIO TENGA PERMISOS
+	if len(permisos) == 0 {
+		logger.Warn("⚠️ Usuario sin permisos asignados durante login",
+			"userID", usuarioRetrieved.ID,
+			"roleID", *usuarioRetrieved.IDRol)
+		return nil, "", time.Time{}, fmt.Errorf("usuario sin permisos asignados")
+	}
+
+	userCacheKey := fmt.Sprintf("user:%s", usuarioRetrieved.ID)
+	eventKey := fmt.Sprintf("event:usuario.logeado:%s", usuarioRetrieved.ID)
 
 	cachedUser, err := s.redisService.Get(ctx, userCacheKey)
 	var userData UserCacheData
@@ -122,24 +137,35 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 	if err == nil && cachedUser != "" {
 		err = json.Unmarshal([]byte(cachedUser), &userData)
 		if err != nil {
-			log.Printf("Error parsing cached user data: %v", err)
+			s.redisService.Delete(ctx, userCacheKey)
+			userData = UserCacheData{}
 		}
 	}
 
-	if userData.IDUser == 0 {
+	if userData.IDUser == "" {
+		// ✅ GUARDAR PERMISOS EN EL CACHE
 		userData = UserCacheData{
-			IDUser: usuarioRetrieved.ID,
-			Nombre: usuarioRetrieved.Username,
-			IDRol:  usuarioRetrieved.IDRol,
+			IDUser:   usuarioRetrieved.ID,
+			Nombre:   usuarioRetrieved.Username,
+			IDRol:    usuarioRetrieved.IDRol,
+			Permisos: permisos,
 		}
 
-		userDataWithPermissions := userData
+		userDataJSON, err := json.Marshal(userData)
+		if err != nil {
+			logger.Error("Error marshaling user cache data:", err)
+		} else {
+			logger.Info("🔍 Guardando usuario con permisos en cache",
+				"userID", usuarioRetrieved.ID,
+				"permisosCount", len(permisos))
 
-		userDataJSON, err := json.Marshal(userDataWithPermissions)
-		if err == nil {
-			err = s.redisService.Set(ctx, userCacheKey, string(userDataJSON), 24*time.Hour)
+			err = s.redisService.Set(ctx, userCacheKey, userDataJSON, 24*time.Hour)
 			if err != nil {
-				log.Printf("Error setting user cache: %v", err)
+				logger.Error("Error setting user cache:", err)
+			} else {
+				logger.Info("✅ Usuario y permisos guardados en cache",
+					"userID", usuarioRetrieved.ID,
+					"permisos", permisos)
 			}
 		}
 	}
@@ -162,7 +188,7 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 	if err != nil || eventExists == "" {
 		err = s.redisService.Set(ctx, eventKey, "true", 1*time.Hour)
 		if err != nil {
-			log.Printf("Error setting event cache: %v", err)
+			logger.Error("Error setting event cache:", err)
 		}
 	}
 
@@ -170,6 +196,10 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 		Message:   "Login exitoso",
 		ExpiresAt: cookieData.ExpiresAt,
 	}
+
+	logger.Info("✅ Login completado exitosamente",
+		"userID", usuarioRetrieved.ID,
+		"permisosCount", len(permisos))
 
 	return response, signedCookie, cookieData.ExpiresAt, nil
 }
@@ -188,12 +218,12 @@ func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*commo
 	if err == nil && cachedUser != "" {
 		err = json.Unmarshal([]byte(cachedUser), &userData)
 		if err != nil {
-			log.Printf("Error parsing cached user data: %v", err)
+			logger.Error("Error parsing cached user data:", err)
 		}
 	}
 
 	var usuarioRetrieved *User
-	if userData.IDUser == 0 {
+	if len(userData.IDUser) == 0 {
 		usuarioRetrieved, err = s.authPort.RetrieveUserByID(ctx, userIDInt)
 		if err != nil {
 			return nil, fmt.Errorf("usuario no encontrado")
@@ -327,7 +357,27 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 func (s *AuthService) ValidateCookie(cookieValue string) (*User, error) {
 	cookieData, err := s.cookieSigner.Verify(cookieValue)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cookie inválida: %v", err)
+	}
+
+	ctx := context.Background()
+
+	// ✅ OBTENER PERMISOS - ES OBLIGATORIO
+	permisos, err := s.authPort.GetPermissionsByRoleID(ctx, cookieData.RoleID)
+	if err != nil {
+		logger.Error("❌ Error crítico obteniendo permisos para validación de cookie",
+			"userID", cookieData.UserID,
+			"roleID", cookieData.RoleID,
+			"error", err)
+		return nil, fmt.Errorf("error validando permisos del usuario: %v", err)
+	}
+
+	// ✅ VERIFICAR QUE HAYA PERMISOS
+	if len(permisos) == 0 {
+		logger.Warn("⚠️ Usuario sin permisos asignados",
+			"userID", cookieData.UserID,
+			"roleID", cookieData.RoleID)
+		return nil, fmt.Errorf("usuario sin permisos asignados")
 	}
 
 	return &User{
@@ -335,6 +385,7 @@ func (s *AuthService) ValidateCookie(cookieValue string) (*User, error) {
 		Username:  cookieData.Username,
 		RolNombre: cookieData.Role,
 		IDRol:     &cookieData.RoleID,
+		Permisos:  permisos, // ✅ PERMISOS OBLIGATORIOS
 	}, nil
 }
 

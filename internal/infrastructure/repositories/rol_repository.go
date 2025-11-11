@@ -1,9 +1,9 @@
 package repositories
 
 import (
-	"api_go/infrastructure/database/models"
 	"api_go/internal/core/auth"
 	"api_go/internal/infrastructure/database"
+	"api_go/internal/infrastructure/database/models"
 	"api_go/pkg/logger"
 	"context"
 	"fmt"
@@ -26,8 +26,6 @@ func NewRolRepository(dbManager *database.DBManager) *RolRepository {
 
 // FindByID busca un rol por ID
 func (r *RolRepository) FindByID(ctx context.Context, id int) (*models.Rol, error) {
-	logger.Info("Buscando rol por ID", "ID", id)
-
 	var rol models.Rol
 
 	err := r.dbManager.GetDB().WithContext(ctx).
@@ -42,14 +40,11 @@ func (r *RolRepository) FindByID(ctx context.Context, id int) (*models.Rol, erro
 		return nil, fmt.Errorf("error buscando rol por ID: %v", err)
 	}
 
-	logger.Info("✅ Rol encontrado", "ID", rol.ID, "NombreRol", rol.NombreRol)
 	return &rol, nil
 }
 
 // FindRolIDByName busca un rol por nombre y retorna su ID
 func (r *RolRepository) FindRolIDByName(ctx context.Context, nombre string) (int, error) {
-	logger.Info("Buscando rol por nombre", "nombre", nombre)
-
 	var rol models.Rol
 
 	err := r.dbManager.GetDB().WithContext(ctx).
@@ -66,14 +61,11 @@ func (r *RolRepository) FindRolIDByName(ctx context.Context, nombre string) (int
 		return 0, fmt.Errorf("error buscando rol por nombre: %v", err)
 	}
 
-	logger.Info("✅ Rol encontrado", "ID", rol.ID, "NombreRol", rol.NombreRol)
 	return rol.ID, nil
 }
 
 // FindAll busca todos los roles
 func (r *RolRepository) FindAll(ctx context.Context) ([]models.Rol, error) {
-	logger.Info("Buscando todos los roles")
-
 	var roles []models.Rol
 
 	err := r.dbManager.GetDB().WithContext(ctx).
@@ -84,14 +76,11 @@ func (r *RolRepository) FindAll(ctx context.Context) ([]models.Rol, error) {
 		return nil, fmt.Errorf("error buscando todos los roles: %v", err)
 	}
 
-	logger.Info("✅ Roles encontrados", "count", len(roles))
 	return roles, nil
 }
 
 // FindByNombre busca roles por nombre (búsqueda parcial)
 func (r *RolRepository) FindByNombre(ctx context.Context, nombre string) ([]models.Rol, error) {
-	logger.Info("🔍 Buscando roles por nombre", "nombre", nombre)
-
 	var roles []models.Rol
 
 	err := r.dbManager.GetDB().WithContext(ctx).
@@ -103,14 +92,11 @@ func (r *RolRepository) FindByNombre(ctx context.Context, nombre string) ([]mode
 		return nil, fmt.Errorf("error buscando roles por nombre: %v", err)
 	}
 
-	logger.Info("✅ Roles encontrados por nombre", "count", len(roles))
 	return roles, nil
 }
 
 // Create crea un nuevo rol
 func (r *RolRepository) Create(ctx context.Context, rol *models.Rol) error {
-	logger.Info("Creando nuevo rol", "nombre", rol.NombreRol)
-
 	err := r.dbManager.GetDB().WithContext(ctx).
 		Create(rol).Error
 
@@ -119,14 +105,10 @@ func (r *RolRepository) Create(ctx context.Context, rol *models.Rol) error {
 		return fmt.Errorf("error creando rol: %v", err)
 	}
 
-	logger.Info("✅ Rol creado", "ID", rol.ID, "NombreRol", rol.NombreRol)
 	return nil
 }
 
-// Update actualiza un rol existente
 func (r *RolRepository) Update(ctx context.Context, rol *models.Rol) error {
-	logger.Info("Actualizando rol", "ID", rol.ID)
-
 	err := r.dbManager.GetDB().WithContext(ctx).
 		Save(rol).Error
 
@@ -135,14 +117,11 @@ func (r *RolRepository) Update(ctx context.Context, rol *models.Rol) error {
 		return fmt.Errorf("error actualizando rol: %v", err)
 	}
 
-	logger.Info("✅ Rol actualizado", "ID", rol.ID)
 	return nil
 }
 
 // Delete elimina un rol por ID
 func (r *RolRepository) Delete(ctx context.Context, id int) error {
-	logger.Info("Eliminando rol", "ID", id)
-
 	result := r.dbManager.GetDB().WithContext(ctx).
 		Delete(&models.Rol{}, id)
 
@@ -156,14 +135,11 @@ func (r *RolRepository) Delete(ctx context.Context, id int) error {
 		return fmt.Errorf("rol no encontrado")
 	}
 
-	logger.Info("✅ Rol eliminado", "ID", id)
 	return nil
 }
 
 // GetRolesConPermisos obtiene roles con sus permisos asociados
 func (r *RolRepository) GetRolesConPermisos(ctx context.Context) ([]models.Rol, error) {
-	logger.Info("Buscando roles con permisos")
-
 	var roles []models.Rol
 
 	err := r.dbManager.GetDB().WithContext(ctx).
@@ -175,6 +151,5 @@ func (r *RolRepository) GetRolesConPermisos(ctx context.Context) ([]models.Rol, 
 		return nil, fmt.Errorf("error buscando roles con permisos: %v", err)
 	}
 
-	logger.Info("✅ Roles con permisos encontrados", "count", len(roles))
 	return roles, nil
 }

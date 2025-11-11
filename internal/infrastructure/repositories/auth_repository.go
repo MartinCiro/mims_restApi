@@ -32,11 +32,9 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 	if authData.Email != "" {
 		searchField = "email"
 		searchValue = authData.Email
-		fmt.Printf("🔍 Buscando usuario por email: %s\n", authData.Email)
 	} else if authData.Username != "" {
 		searchField = "username"
 		searchValue = authData.Username
-		fmt.Printf("🔍 Buscando usuario por username: %s\n", authData.Username)
 	} else {
 		return nil, fmt.Errorf("debe proporcionar email o username")
 	}
@@ -50,8 +48,6 @@ func (a *AuthAdapter) RetrieveUser(ctx context.Context, authData auth.AuthData) 
 		fmt.Printf("❌ Usuario no encontrado: %s=%s\n", searchField, searchValue)
 		return nil, nil
 	}
-
-	logger.Info("✅ Usuario encontrado", "user_id", usuario.ID, "email", usuario.Email)
 
 	if usuario.IDRol != nil {
 		permisos, err := a.permisoRepo.FindByRolID(ctx, *usuario.IDRol)
@@ -108,4 +104,8 @@ func (a *AuthAdapter) RetrieveUserByID(ctx context.Context, userID int) (*auth.U
 	}
 
 	return usuario, nil
+}
+
+func (a *AuthAdapter) GetPermissionsByRoleID(ctx context.Context, roleID int) ([]string, error) {
+	return a.permisoRepo.FindByRolID(ctx, roleID)
 }

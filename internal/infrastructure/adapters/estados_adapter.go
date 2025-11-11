@@ -1,4 +1,4 @@
-package repositories
+package adapters
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"api_go/internal/core/estados"
+	"api_go/internal/infrastructure/database/models"
 	"api_go/internal/infrastructure/redis"
 	"api_go/pkg/utils"
 
@@ -27,10 +28,20 @@ func NewEstadosAdapter(db *gorm.DB, redisService *redis.Cache) *EstadosAdapter {
 
 // CrearEstados implementa el puerto EstadosPort
 func (a *EstadosAdapter) CrearEstados(ctx context.Context, estadoData estados.EstadoData) (*estados.Estado, error) {
-	// Mapear EstadoData a modelo de base de datos
-	estadoDB := EstadoDB{
-		Nombre:      estadoData.Nombre,
-		Descripcion: estadoData.Descripcion,
+	// ✅ VALIDAR QUE LA CONEXIÓN A BD NO SEA NIL
+	if a.db == nil {
+		return nil, fmt.Errorf("error de configuración: conexión a base de datos no disponible")
+	}
+
+	// ✅ VALIDAR QUE REDIS NO SEA NIL
+	if a.redisService == nil {
+		return nil, fmt.Errorf("error de configuración: servicio de cache no disponible")
+	}
+
+	// Usar el modelo existente models.Estado
+	estadoDB := models.Estado{
+		NombreEstado: estadoData.Nombre, // Usar NombreEstado en lugar de Nombre
+		Descripcion:  estadoData.Descripcion,
 	}
 
 	err := a.db.WithContext(ctx).Create(&estadoDB).Error
@@ -58,11 +69,9 @@ func (a *EstadosAdapter) ObtenerEstados(ctx context.Context) ([]estados.Estado, 
 		}
 	}
 
-	// Consultar base de datos
-	var estadosDB []EstadoDB
-	err = a.db.WithContext(ctx).
-		Select("id", "nombre", "descripcion").
-		Find(&estadosDB).Error
+	// Consultar base de datos usando models.Estado
+	var estadosDB []models.Estado
+	err = a.db.WithContext(ctx).Find(&estadosDB).Error
 
 	if err != nil {
 		return nil, a.handleQueryError(err, "consultando estados")
@@ -100,10 +109,9 @@ func (a *EstadosAdapter) ObtenerEstadosXid(ctx context.Context, estadoData estad
 		}
 	}
 
-	// Consultar base de datos
-	var estadoDB EstadoDB
+	// Consultar base de datos usando models.Estado
+	var estadoDB models.Estado
 	err = a.db.WithContext(ctx).
-		Select("id", "nombre", "descripcion").
 		Where("id = ?", estadoData.ID).
 		First(&estadoDB).Error
 
@@ -144,8 +152,8 @@ func (a *EstadosAdapter) DelEstado(ctx context.Context, estadoData estados.Estad
 		}
 	}
 
-	// Eliminar de base de datos
-	result := a.db.WithContext(ctx).Where("id = ?", estadoData.ID).Delete(&EstadoDB{})
+	// Eliminar de base de datos usando models.Estado
+	result := a.db.WithContext(ctx).Where("id = ?", estadoData.ID).Delete(&models.Estado{})
 	if result.Error != nil {
 		return a.handleDeleteError(result.Error, estadoData.ID)
 	}
@@ -163,7 +171,7 @@ func (a *EstadosAdapter) DelEstado(ctx context.Context, estadoData estados.Estad
 // ActualizaEstado implementa el puerto EstadosPort
 func (a *EstadosAdapter) ActualizaEstado(ctx context.Context, estadoData estados.EstadoDataUpdate) (*estados.Estado, error) {
 	// Verificar si el estado existe
-	var estadoExistente EstadoDB
+	var estadoExistente models.Estado
 	err := a.db.WithContext(ctx).Where("id = ?", estadoData.ID).First(&estadoExistente).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -173,13 +181,13 @@ func (a *EstadosAdapter) ActualizaEstado(ctx context.Context, estadoData estados
 	}
 
 	// Preparar updates
-	updates := EstadoDB{
-		Nombre:      estadoData.Nombre,
-		Descripcion: estadoData.Descripcion,
+	updates := map[string]interface{}{
+		"nombre_estado": estadoData.Nombre,
+		"descripcion":   estadoData.Descripcion,
 	}
 
 	// Actualizar en base de datos
-	err = a.db.WithContext(ctx).Model(&EstadoDB{}).
+	err = a.db.WithContext(ctx).Model(&models.Estado{}).
 		Where("id = ?", estadoData.ID).
 		Updates(updates).Error
 
@@ -188,7 +196,7 @@ func (a *EstadosAdapter) ActualizaEstado(ctx context.Context, estadoData estados
 	}
 
 	// Obtener estado actualizado
-	var estadoActualizado EstadoDB
+	var estadoActualizado models.Estado
 	err = a.db.WithContext(ctx).Where("id = ?", estadoData.ID).First(&estadoActualizado).Error
 	if err != nil {
 		return nil, a.handleQueryError(err, "obteniendo estado actualizado")
@@ -218,15 +226,15 @@ func (a *EstadosAdapter) ActualizaEstado(ctx context.Context, estadoData estados
 }
 
 // Mapeo de DB a Entity
-func (a *EstadosAdapter) toEstadoEntity(estadoDB *EstadoDB) *estados.Estado {
+func (a *EstadosAdapter) toEstadoEntity(estadoDB *models.Estado) *estados.Estado {
 	return &estados.Estado{
 		ID:          estadoDB.ID,
-		Nombre:      estadoDB.Nombre,
+		Nombre:      estadoDB.NombreEstado,
 		Descripcion: estadoDB.Descripcion,
 	}
 }
 
-// Manejo de errores
+// Manejo de errores (sin cambios)
 func (a *EstadosAdapter) handleCreateError(err error, nombre string) error {
 	errStr := err.Error()
 
@@ -268,11 +276,4 @@ func (a *EstadosAdapter) handleUpdateError(err error, nombre string) error {
 	}
 
 	return fmt.Errorf("status_cod:400, data:Ocurrió un error actualizando el estado")
-}
-
-// Modelo de base de datos
-type EstadoDB struct {
-	ID          int     `gorm:"primaryKey;column:id"`
-	Nombre      string  `gorm:"column:nombre;uniqueIndex"`
-	Descripcion *string `gorm:"column:descripcion"`
 }

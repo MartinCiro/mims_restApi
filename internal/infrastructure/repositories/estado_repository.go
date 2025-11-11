@@ -1,9 +1,9 @@
 package repositories
 
 import (
-	"api_go/infrastructure/database/models"
 	"api_go/internal/core/auth"
 	"api_go/internal/infrastructure/database"
+	"api_go/internal/infrastructure/database/models"
 	"context"
 	"fmt"
 

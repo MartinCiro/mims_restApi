@@ -1,8 +1,8 @@
 package repositories
 
 import (
-	"api_go/infrastructure/database/models"
 	"api_go/internal/infrastructure/database"
+	"api_go/internal/infrastructure/database/models"
 	"context"
 	"fmt"
 
@@ -22,8 +22,6 @@ func NewPermisoRepository(dbManager *database.DBManager) *PermisoRepository {
 }
 
 func (r *PermisoRepository) FindByRolID(ctx context.Context, rolID int) ([]string, error) {
-	logger.Info("Buscando permisos para rol", "rolID", rolID)
-
 	var permisos []models.Permiso // ✅ Usar el modelo existente
 
 	err := r.dbManager.GetDB().WithContext(ctx).
@@ -34,7 +32,6 @@ func (r *PermisoRepository) FindByRolID(ctx context.Context, rolID int) ([]strin
 		Find(&permisos).Error
 
 	if err != nil {
-		logger.Error("❌ Error buscando permisos para rol", "error", err)
 		return nil, fmt.Errorf("error buscando permisos: %v", err)
 	}
 
@@ -43,8 +40,6 @@ func (r *PermisoRepository) FindByRolID(ctx context.Context, rolID int) ([]strin
 	for i, permiso := range permisos {
 		permisoNombres[i] = permiso.NombrePermiso
 	}
-
-	logger.Info("✅ Permisos encontrados para rol", "rolID", rolID, "count", len(permisoNombres))
 	return permisoNombres, nil
 }
 

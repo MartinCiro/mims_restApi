@@ -1,24 +1,25 @@
 package app
 
 import (
-	"context"
-	"fmt"
-	"strconv"
-
-	"gorm.io/gorm"
-
 	"api_go/config"
-	"api_go/infrastructure/database/models"
 	"api_go/internal/core/auth"
 	"api_go/internal/core/estados"
 	"api_go/internal/core/login"
+	"api_go/internal/core/roles"
+	"api_go/internal/infrastructure/adapters"
 	"api_go/internal/infrastructure/cookies"
 	"api_go/internal/infrastructure/database"
+	"api_go/internal/infrastructure/database/models"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/infrastructure/redis"
 	"api_go/internal/infrastructure/repositories"
 	"api_go/pkg/logger"
 	"api_go/pkg/utils"
+	"context"
+	"fmt"
+	"strconv"
+
+	"gorm.io/gorm"
 )
 
 type App struct {
@@ -34,6 +35,7 @@ type App struct {
 	// Servicios del Core
 	AuthService   *auth.AuthService
 	EstadoService *estados.EstadoService
+	RolService    *roles.RolService
 
 	// Servicios de Utilidad
 	PasswordService *utils.PasswordService
@@ -161,6 +163,14 @@ func (a *App) initializeServices() error {
 	permisoRepo := repositories.NewPermisoRepository(dbManager)
 	estadoRepo := repositories.NewEstadoRepository(dbManager)
 
+	// ✅ INICIALIZAR ESTADOS ADAPTER Y SERVICE
+	estadosAdapter := adapters.NewEstadosAdapter(a.DB, a.RedisCache)
+	a.EstadoService = estados.NewEstadoService(estadosAdapter)
+
+	// ✅ INICIALIZAR ROLES ADAPTER Y SERVICE
+	rolesAdapter := adapters.NewRolesAdapter(a.DB, a.RedisCache)
+	a.RolService = roles.NewRolService(rolesAdapter)
+
 	// AuthAdapter coordina los repositorios
 	authAdapter := repositories.NewAuthAdapter(usuarioRepo, rolRepo, permisoRepo)
 
@@ -169,7 +179,7 @@ func (a *App) initializeServices() error {
 		authAdapter,
 		a.RedisCache,
 		a.JWTService,
-		a.CookieSigner, // NUEVO: Agregar CookieSigner
+		a.CookieSigner,
 		a.PasswordService,
 		usuarioRepo,
 		rolRepo,
@@ -185,7 +195,12 @@ func (a *App) initializeServices() error {
 		a.Config,
 	)
 
-	logger.Info("servicios del core inicializados correctamente")
+	logger.Info("✅ Todos los servicios del core inicializados correctamente",
+		"AuthService", a.AuthService != nil,
+		"EstadoService", a.EstadoService != nil,
+		"RolService", a.RolService != nil,
+		"LoginService", a.LoginService != nil)
+
 	return nil
 }
 

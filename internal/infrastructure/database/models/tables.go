@@ -41,7 +41,7 @@ func (Rol) TableName() string {
 // Permiso model
 type Permiso struct {
 	ID            int    `gorm:"primaryKey;autoIncrement" json:"id"`
-	NombrePermiso string `gorm:"type:text;not null" json:"nombre_permiso"`
+	NombrePermiso string `gorm:"type:text;not null;uniqueIndex:uni_permisos_nombre_permiso" json:"nombre_permiso"`
 	Descripcion   string `gorm:"type:text" json:"descripcion"`
 }
 
@@ -56,7 +56,7 @@ type RolXPermiso struct {
 
 // Usuario model
 type Usuario struct {
-	Documento       int        `gorm:"primaryKey" json:"documento"`
+	Documento       string     `gorm:"primaryKey" json:"documento"`
 	Nombres         string     `gorm:"type:text;not null" json:"nombres"`
 	Apellido        string     `gorm:"type:text;not null" json:"apellido"`
 	Email           string     `gorm:"type:text;not null;uniqueIndex" json:"email"`

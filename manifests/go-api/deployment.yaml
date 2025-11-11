@@ -102,11 +102,11 @@ spec:
           httpGet:
             path: /health
             port: 4000                # ← Puerto 4000 para health checks
-          initialDelaySeconds: 30
-          periodSeconds: 10
+          initialDelaySeconds: 45
+          periodSeconds: 60
         readinessProbe:
           httpGet:
             path: /ready
             port: 4000                # ← Puerto 4000 para readiness
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          initialDelaySeconds: 10
+          periodSeconds: 60

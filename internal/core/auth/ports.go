@@ -5,6 +5,7 @@ import "context"
 type AuthPort interface {
 	RetrieveUser(ctx context.Context, authData AuthData) (*User, error)
 	RetrieveUserByID(ctx context.Context, userID int) (*User, error)
+	GetPermissionsByRoleID(ctx context.Context, roleID int) ([]string, error)
 }
 
 type UserRepositoryPort interface {
@@ -25,7 +26,7 @@ type AuthData struct {
 }
 
 type User struct {
-	ID           int      `json:"id"`
+	ID           string   `json:"id"`
 	Username     string   `json:"username,omitempty"`
 	Email        string   `json:"email"`
 	PasswordHash string   `json:"password_hash,omitempty"`

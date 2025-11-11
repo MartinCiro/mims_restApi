@@ -11,6 +11,7 @@ import (
 	"api_go/internal/interfaces/api/handlers/auth"
 	common_handler "api_go/internal/interfaces/api/handlers/common"
 	"api_go/internal/interfaces/api/handlers/estados"
+	"api_go/internal/interfaces/api/handlers/roles"
 	"api_go/internal/interfaces/api/middlewares"
 )
 
@@ -72,6 +73,7 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	estadosHandler := estados.NewEstadosHandler(app.EstadoService)
 	authHandler := auth.NewAuthHandler(app.AuthService)
 	profileHandler := auth.NewProfileHandler(app.AuthService)
+	rolesHandler := roles.NewRolesHandler(app.RolService)
 
 	// ========== RUTAS PÚBLICAS ==========
 
@@ -95,11 +97,6 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 			http.HandlerFunc(estadosHandler.ObtenerEstados),
 		))
 
-	protected.Handle("POST /api/auth/logout",
-		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionLoginLogout)(
-			http.HandlerFunc(authHandler.Logout),
-		))
-
 	protected.Handle("GET /api/estados/{id}",
 		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionEstadosVer)(
 			http.HandlerFunc(estadosHandler.ObtenerEstadoXid),
@@ -120,14 +117,49 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 			http.HandlerFunc(estadosHandler.EliminarEstado),
 		))
 
+	// Rutas de Roles con permisos
+	protected.Handle("GET /api/roles",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionRolesListar)(
+			http.HandlerFunc(rolesHandler.ObtenerRoles),
+		))
+
+	protected.Handle("GET /api/roles/permisos",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionRolesPermisos)(
+			http.HandlerFunc(rolesHandler.ObtenerPermisos),
+		))
+
+	protected.Handle("GET /api/roles/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionRolesVer)(
+			http.HandlerFunc(rolesHandler.ObtenerRolXid),
+		))
+
+	protected.Handle("POST /api/roles",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionRolesCrear)(
+			http.HandlerFunc(rolesHandler.CrearRol),
+		))
+
+	protected.Handle("PUT /api/roles/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionRolesEditar)(
+			http.HandlerFunc(rolesHandler.ActualizarRol),
+		))
+
+	protected.Handle("DELETE /api/roles/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionRolesEliminar)(
+			http.HandlerFunc(rolesHandler.EliminarRol),
+		))
+
+	// Rutas de Auth protegidas
+	protected.Handle("POST /api/auth/logout",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionLoginLogout)(
+			http.HandlerFunc(authHandler.Logout),
+		))
+
 	protected.Handle("GET /api/profile",
 		authMiddleware.Handler(http.HandlerFunc(profileHandler.GetProfile)))
 
-	// Aplicar middleware de autenticación base a las rutas protegidas
-	mux.Handle("/api/estados", authMiddleware.Handler(protected))
-	mux.Handle("/api/auth/me", authMiddleware.Handler(protected))
-	mux.Handle("/api/auth/logout", authMiddleware.Handler(protected))
-	mux.Handle("/api/profile", authMiddleware.Handler(protected))
+	// ✅ SOLAMENTE ESTA LÍNEA - aplicar middleware de autenticación una vez
+	// Esto aplica auth a TODAS las rutas en el router protegido
+	mux.Handle("/", authMiddleware.Handler(protected))
 }
 
 // withGlobalMiddleware aplica middlewares globales

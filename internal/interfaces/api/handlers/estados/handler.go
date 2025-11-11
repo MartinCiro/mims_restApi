@@ -1,3 +1,4 @@
+// internal/interfaces/api/handlers/estados/handler.go
 package estados
 
 import (
@@ -5,16 +6,17 @@ import (
 	"net/http"
 	"strconv"
 
-	"api_go/internal/core/estados"
+	coreEstados "api_go/internal/core/estados"
 	"api_go/internal/interfaces/api/common"
+	estadosDTOs "api_go/internal/interfaces/api/estados"
 	"api_go/pkg/utils"
 )
 
 type EstadosHandler struct {
-	estadoService *estados.EstadoService
+	estadoService *coreEstados.EstadoService
 }
 
-func NewEstadosHandler(estadoService *estados.EstadoService) *EstadosHandler {
+func NewEstadosHandler(estadoService *coreEstados.EstadoService) *EstadosHandler {
 	return &EstadosHandler{
 		estadoService: estadoService,
 	}
@@ -28,7 +30,7 @@ func (h *EstadosHandler) ObtenerEstados(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	response := common.NewSuccessResponse(estados)
+	response := common.NewSuccessResponse(estadosDTOs.FromEstados(estados))
 	common.WriteJSONResponse(w, response, 200)
 }
 
@@ -36,13 +38,12 @@ func (h *EstadosHandler) ObtenerEstadoXid(w http.ResponseWriter, r *http.Request
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		response := common.NewErrorResponse(400, "ID inválido")
-		common.WriteJSONResponse(w, response, 400)
+		common.WriteSimpleError(w, "ID inválido", 400)
 		return
 	}
 
 	ctx := r.Context()
-	estadoData := estados.EstadoDataXid{ID: id}
+	estadoData := coreEstados.EstadoDataXid{ID: id}
 	estado, err := h.estadoService.ObtenerEstadoXid(ctx, estadoData)
 	if err != nil {
 		utils.WriteValidationError(w, err, 500)
@@ -50,91 +51,87 @@ func (h *EstadosHandler) ObtenerEstadoXid(w http.ResponseWriter, r *http.Request
 	}
 
 	if estado == nil {
-		response := common.NewErrorResponse(404, "Estado no encontrado")
-		common.WriteJSONResponse(w, response, 404)
+		common.WriteSimpleError(w, "Estado no encontrado", 404)
 		return
 	}
 
-	response := common.NewSuccessResponse(estado)
+	response := common.NewSuccessResponse(estadosDTOs.FromEstado(estado))
 	common.WriteJSONResponse(w, response, 200)
 }
 
 func (h *EstadosHandler) CrearEstado(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Nombre      string  `json:"nombre"`
-		Descripcion *string `json:"descripcion,omitempty"`
-	}
+	var req estadosDTOs.CreateEstadoRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response := common.NewErrorResponse(400, "Solicitud inválida")
-		common.WriteJSONResponse(w, response, 400)
+		common.WriteSimpleError(w, "Solicitud inválida: formato JSON incorrecto", 400)
+		return
+	}
+
+	// ✅ VALIDAR EL DTO ANTES de procesar
+	if errors := common.ValidateRequest(req); errors != nil {
+		common.WriteValidationErrors(w, errors, 400)
 		return
 	}
 
 	ctx := r.Context()
-	estadoData := estados.EstadoData{
-		Nombre:      req.Nombre,
-		Descripcion: req.Descripcion,
-	}
-
-	estado, err := h.estadoService.CrearEstado(ctx, estadoData)
+	estadoData := estadosDTOs.ToEstadoData(req)
+	_, err := h.estadoService.CrearEstado(ctx, estadoData)
 	if err != nil {
-		utils.WriteValidationError(w, err, 400)
+		common.WriteSimpleError(w, err.Error(), 400)
 		return
 	}
 
-	response := common.NewSuccessResponse(estado)
-	common.WriteJSONResponse(w, response, 201)
+	successResponse := common.NewSuccessResponse("Se ha creado el estado correctamente")
+	common.WriteJSONResponse(w, successResponse, 201)
 }
 
 func (h *EstadosHandler) ActualizarEstado(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		response := common.NewErrorResponse(400, "ID inválido")
-		common.WriteJSONResponse(w, response, 400)
+		common.WriteSimpleError(w, "ID inválido", 400)
 		return
 	}
 
-	var req struct {
-		Nombre      string  `json:"nombre"`
-		Descripcion *string `json:"descripcion,omitempty"`
-	}
-
+	var req estadosDTOs.UpdateEstadoRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		response := common.NewErrorResponse(400, "Solicitud inválida")
-		common.WriteJSONResponse(w, response, 400)
+		common.WriteSimpleError(w, "Solicitud inválida: formato JSON incorrecto", 400)
 		return
 	}
+
+	// ✅ VALIDAR EL DTO ANTES de procesar
+	if errors := common.ValidateRequest(req); errors != nil {
+		common.WriteValidationErrors(w, errors, 400)
+		return
+	}
+
+	// Asegurar que el ID de la URL coincide con el del body
+	req.ID = id
 
 	ctx := r.Context()
-	estadoData := estados.EstadoDataUpdate{
-		ID:          id,
-		Nombre:      req.Nombre,
-		Descripcion: req.Descripcion,
-	}
+	estadoData := estadosDTOs.ToEstadoDataUpdate(req)
 
-	estado, err := h.estadoService.UpEstado(ctx, estadoData)
+	// ✅ Usar blank identifier _ ya que no necesitamos el estado retornado
+	_, err = h.estadoService.UpEstado(ctx, estadoData)
 	if err != nil {
-		utils.WriteValidationError(w, err, 400)
+		common.WriteSimpleError(w, err.Error(), 400)
 		return
 	}
 
-	response := common.NewSuccessResponse(estado)
-	common.WriteJSONResponse(w, response, 200)
+	successResponse := common.NewSuccessResponse("Se ha actualizado el estado correctamente")
+	common.WriteJSONResponse(w, successResponse, 200)
 }
 
 func (h *EstadosHandler) EliminarEstado(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		response := common.NewErrorResponse(400, "ID inválido")
-		common.WriteJSONResponse(w, response, 400)
+		common.WriteSimpleError(w, "ID inválido", 400)
 		return
 	}
 
 	ctx := r.Context()
-	estadoData := estados.EstadoDataXid{ID: id}
+	estadoData := coreEstados.EstadoDataXid{ID: id}
 	err = h.estadoService.DelEstado(ctx, estadoData)
 	if err != nil {
 		utils.WriteValidationError(w, err, 400)

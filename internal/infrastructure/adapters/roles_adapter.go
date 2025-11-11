@@ -1,0 +1,518 @@
+package adapters
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"api_go/internal/core/roles"
+	"api_go/internal/infrastructure/redis"
+	"api_go/pkg/utils"
+
+	"gorm.io/gorm"
+)
+
+type RolesAdapter struct {
+	db           *gorm.DB
+	redisService *redis.Cache
+}
+
+func NewRolesAdapter(db *gorm.DB, redisService *redis.Cache) *RolesAdapter {
+	return &RolesAdapter{
+		db:           db,
+		redisService: redisService,
+	}
+}
+
+// CrearRol implementa el puerto RolesPort
+func (a *RolesAdapter) CrearRol(ctx context.Context, rolData roles.RolData) (*roles.Rol, error) {
+	// Verificar si el rol ya existe
+	var rolExistente RolDB
+	err := a.db.WithContext(ctx).Where("nombre_rol = ?", rolData.Nombre).First(&rolExistente).Error
+	if err == nil {
+		return nil, fmt.Errorf("status_cod:409, data:Ya existe un rol con el nombre '%s'", rolData.Nombre)
+	} else if err != gorm.ErrRecordNotFound {
+		return nil, a.handleQueryError(err, "verificando rol existente")
+	}
+
+	// Obtener permisos basados en la lista recibida
+	permisosIDs, err := a.obtenerPermisosIDs(ctx, rolData.Permisos)
+	if err != nil {
+		return nil, err
+	}
+
+	// Crear transacción
+	tx := a.db.WithContext(ctx).Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Crear el rol
+	rolDB := RolDB{
+		NombreRol:   rolData.Nombre,
+		Descripcion: rolData.Descripcion,
+	}
+
+	if err := tx.Create(&rolDB).Error; err != nil {
+		tx.Rollback()
+		return nil, a.handleCreateError(err, rolData.Nombre)
+	}
+
+	// Asignar permisos al rol
+	for _, permisoID := range permisosIDs {
+		rolPermiso := RolXPermisoDB{
+			IDRol:     rolDB.ID,
+			IDPermiso: permisoID,
+		}
+		if err := tx.Create(&rolPermiso).Error; err != nil {
+			tx.Rollback()
+			return nil, a.handleCreateError(err, "asignando permisos")
+		}
+	}
+
+	// Commit de la transacción
+	if err := tx.Commit().Error; err != nil {
+		return nil, fmt.Errorf("status_cod:400, data:Error al guardar el rol: %v", err)
+	}
+
+	// Limpiar cache
+	a.redisService.Delete(ctx, "roles:lista")
+	a.redisService.Delete(ctx, "permisos:lista")
+
+	// Obtener el rol creado con sus permisos
+	rolCompleto, err := a.obtenerRolConPermisos(ctx, rolDB.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return rolCompleto, nil
+}
+
+// ObtenerRoles implementa el puerto RolesPort
+func (a *RolesAdapter) ObtenerRoles(ctx context.Context) ([]roles.Rol, error) {
+	cacheKey := "roles:lista"
+
+	// Intentar obtener del cache
+	cachedRoles, err := a.redisService.Get(ctx, cacheKey)
+	if err == nil && cachedRoles != "" {
+		var rolesCache []roles.Rol
+		if err := json.Unmarshal([]byte(cachedRoles), &rolesCache); err == nil {
+			return rolesCache, nil
+		}
+	}
+
+	// Consultar base de datos
+	var rolesDB []RolDB
+	err = a.db.WithContext(ctx).
+		Select("id", "nombre_rol", "descripcion").
+		Find(&rolesDB).Error
+
+	if err != nil {
+		return nil, a.handleQueryError(err, "consultando roles")
+	}
+
+	if len(rolesDB) == 0 {
+		return []roles.Rol{}, nil
+	}
+
+	// Obtener permisos para cada rol
+	rolesList := make([]roles.Rol, len(rolesDB))
+	for i, rolDB := range rolesDB {
+		rolCompleto, err := a.obtenerRolConPermisos(ctx, rolDB.ID)
+		if err != nil {
+			return nil, err
+		}
+		rolesList[i] = *rolCompleto
+	}
+
+	// Guardar en cache
+	rolesJSON, err := json.Marshal(rolesList)
+	if err == nil {
+		a.redisService.Set(ctx, cacheKey, string(rolesJSON), 3600)
+	}
+
+	return rolesList, nil
+}
+
+// ObtenerRolXid implementa el puerto RolesPort
+func (a *RolesAdapter) ObtenerRolXid(ctx context.Context, rolData roles.RolDataXid) (*roles.Rol, error) {
+	cacheKey := fmt.Sprintf("rol:%d", rolData.ID)
+
+	// Intentar obtener del cache
+	cachedRol, err := a.redisService.Get(ctx, cacheKey)
+	if err == nil && cachedRol != "" {
+		var rolCache roles.Rol
+		if err := json.Unmarshal([]byte(cachedRol), &rolCache); err == nil {
+			return &rolCache, nil
+		}
+	}
+
+	// Consultar base de datos
+	var rolDB RolDB
+	err = a.db.WithContext(ctx).
+		Select("id", "nombre_rol", "descripcion").
+		Where("id = ?", rolData.ID).
+		First(&rolDB).Error
+
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, a.handleQueryError(err, "consultando rol")
+	}
+
+	rolCompleto, err := a.obtenerRolConPermisos(ctx, rolDB.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Guardar en cache
+	rolJSON, err := json.Marshal(rolCompleto)
+	if err == nil {
+		a.redisService.Set(ctx, cacheKey, string(rolJSON), 3600)
+	}
+
+	return rolCompleto, nil
+}
+
+// ActualizarRol implementa el puerto RolesPort
+func (a *RolesAdapter) ActualizarRol(ctx context.Context, rolData roles.RolDataUpdate) (*roles.Rol, error) {
+	// Verificar si el rol existe
+	var rolExistente RolDB
+	err := a.db.WithContext(ctx).Where("id = ?", rolData.ID).First(&rolExistente).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, fmt.Errorf("status_cod:404, data:El rol solicitado no existe")
+		}
+		return nil, a.handleQueryError(err, "verificando rol existente")
+	}
+
+	// Verificar si el nombre ya existe en otro rol
+	var rolConMismoNombre RolDB
+	err = a.db.WithContext(ctx).Where("nombre_rol = ? AND id != ?", rolData.Nombre, rolData.ID).First(&rolConMismoNombre).Error
+	if err == nil {
+		return nil, fmt.Errorf("status_cod:409, data:Ya existe otro rol con el nombre '%s'", rolData.Nombre)
+	} else if err != gorm.ErrRecordNotFound {
+		return nil, a.handleQueryError(err, "verificando nombre duplicado")
+	}
+
+	// Obtener permisos basados en la lista recibida
+	permisosIDs, err := a.obtenerPermisosIDs(ctx, rolData.Permisos)
+	if err != nil {
+		return nil, err
+	}
+
+	// Crear transacción
+	tx := a.db.WithContext(ctx).Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Actualizar el rol
+	updates := RolDB{
+		NombreRol:   rolData.Nombre,
+		Descripcion: rolData.Descripcion,
+	}
+
+	if err := tx.Model(&RolDB{}).Where("id = ?", rolData.ID).Updates(updates).Error; err != nil {
+		tx.Rollback()
+		return nil, a.handleUpdateError(err, rolData.Nombre)
+	}
+
+	// Eliminar permisos actuales
+	if err := tx.Where("id_rol = ?", rolData.ID).Delete(&RolXPermisoDB{}).Error; err != nil {
+		tx.Rollback()
+		return nil, a.handleUpdateError(err, "eliminando permisos anteriores")
+	}
+
+	// Asignar nuevos permisos
+	for _, permisoID := range permisosIDs {
+		rolPermiso := RolXPermisoDB{
+			IDRol:     rolData.ID,
+			IDPermiso: permisoID,
+		}
+		if err := tx.Create(&rolPermiso).Error; err != nil {
+			tx.Rollback()
+			return nil, a.handleUpdateError(err, "asignando nuevos permisos")
+		}
+	}
+
+	// Commit de la transacción
+	if err := tx.Commit().Error; err != nil {
+		return nil, fmt.Errorf("status_cod:400, data:Error al actualizar el rol: %v", err)
+	}
+
+	// Limpiar cache
+	a.redisService.Delete(ctx, "roles:lista")
+	a.redisService.Delete(ctx, fmt.Sprintf("rol:%d", rolData.ID))
+	a.redisService.Delete(ctx, "permisos:lista")
+
+	// Obtener el rol actualizado
+	rolActualizado, err := a.obtenerRolConPermisos(ctx, rolData.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	return rolActualizado, nil
+}
+
+// EliminarRol implementa el puerto RolesPort
+func (a *RolesAdapter) EliminarRol(ctx context.Context, rolData roles.RolDataXid) error {
+	// Verificar si el rol existe
+	var rolExistente RolDB
+	err := a.db.WithContext(ctx).Where("id = ?", rolData.ID).First(&rolExistente).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return fmt.Errorf("status_cod:404, data:El rol solicitado no existe")
+		}
+		return a.handleQueryError(err, "verificando rol existente")
+	}
+
+	// Verificar si hay usuarios usando este rol
+	var countUsuarios int64
+	err = a.db.WithContext(ctx).Model(&UsuarioDB{}).Where("id_rol = ?", rolData.ID).Count(&countUsuarios).Error
+	if err != nil {
+		return a.handleDeleteError(err, rolData.ID)
+	}
+
+	if countUsuarios > 0 {
+		return fmt.Errorf("status_cod:400, data:No se puede eliminar el rol porque tiene usuarios asociados")
+	}
+
+	// Crear transacción
+	tx := a.db.WithContext(ctx).Begin()
+	defer func() {
+		if r := recover(); r != nil {
+			tx.Rollback()
+		}
+	}()
+
+	// Eliminar permisos del rol
+	if err := tx.Where("id_rol = ?", rolData.ID).Delete(&RolXPermisoDB{}).Error; err != nil {
+		tx.Rollback()
+		return a.handleDeleteError(err, rolData.ID)
+	}
+
+	// Eliminar el rol
+	result := tx.Where("id = ?", rolData.ID).Delete(&RolDB{})
+	if result.Error != nil {
+		tx.Rollback()
+		return a.handleDeleteError(result.Error, rolData.ID)
+	}
+
+	if result.RowsAffected == 0 {
+		tx.Rollback()
+		return fmt.Errorf("status_cod:404, data:El rol con ID %d no existe", rolData.ID)
+	}
+
+	// Commit de la transacción
+	if err := tx.Commit().Error; err != nil {
+		return fmt.Errorf("status_cod:400, data:Error al eliminar el rol: %v", err)
+	}
+
+	// Limpiar cache
+	a.redisService.Delete(ctx, "roles:lista")
+	a.redisService.Delete(ctx, fmt.Sprintf("rol:%d", rolData.ID))
+	a.redisService.Delete(ctx, "permisos:lista")
+
+	return nil
+}
+
+// ObtenerTodosLosPermisos implementa el puerto RolesPort
+func (a *RolesAdapter) ObtenerTodosLosPermisos(ctx context.Context) ([]string, error) {
+	cacheKey := "permisos:lista"
+
+	// Intentar obtener del cache
+	cachedPermisos, err := a.redisService.Get(ctx, cacheKey)
+	if err == nil && cachedPermisos != "" {
+		var permisosCache []string
+		if err := json.Unmarshal([]byte(cachedPermisos), &permisosCache); err == nil {
+			return permisosCache, nil
+		}
+	}
+
+	// Consultar base de datos
+	var permisosDB []PermisoDB
+	err = a.db.WithContext(ctx).
+		Select("nombre_permiso").
+		Find(&permisosDB).Error
+
+	if err != nil {
+		return nil, a.handleQueryError(err, "consultando permisos")
+	}
+
+	permisos := make([]string, len(permisosDB))
+	for i, permisoDB := range permisosDB {
+		permisos[i] = permisoDB.NombrePermiso
+	}
+
+	// Guardar en cache
+	permisosJSON, err := json.Marshal(permisos)
+	if err == nil {
+		a.redisService.Set(ctx, cacheKey, string(permisosJSON), 3600)
+	}
+
+	return permisos, nil
+}
+
+// obtenerPermisosIDs obtiene los IDs de permisos basados en los nombres
+func (a *RolesAdapter) obtenerPermisosIDs(ctx context.Context, permisosNombres []string) ([]int, error) {
+	if len(permisosNombres) == 0 {
+		return []int{}, nil
+	}
+
+	// Si el primer permiso es "All", obtener todos los permisos
+	if len(permisosNombres) == 1 && permisosNombres[0] == "All" {
+		var todosPermisos []PermisoDB
+		err := a.db.WithContext(ctx).Select("id").Find(&todosPermisos).Error
+		if err != nil {
+			return nil, a.handleQueryError(err, "obteniendo todos los permisos")
+		}
+
+		permisosIDs := make([]int, len(todosPermisos))
+		for i, permiso := range todosPermisos {
+			permisosIDs[i] = permiso.ID
+		}
+		return permisosIDs, nil
+	}
+
+	// Obtener IDs de permisos específicos
+	var permisosDB []PermisoDB
+	err := a.db.WithContext(ctx).
+		Select("id", "nombre_permiso").
+		Where("nombre_permiso IN ?", permisosNombres).
+		Find(&permisosDB).Error
+
+	if err != nil {
+		return nil, a.handleQueryError(err, "obteniendo IDs de permisos")
+	}
+
+	// Verificar que todos los permisos solicitados existen
+	permisosEncontrados := make(map[string]bool)
+	permisosIDs := make([]int, len(permisosDB))
+
+	for i, permisoDB := range permisosDB {
+		permisosEncontrados[permisoDB.NombrePermiso] = true
+		permisosIDs[i] = permisoDB.ID
+	}
+
+	// Verificar permisos no encontrados
+	var permisosNoEncontrados []string
+	for _, permisoNombre := range permisosNombres {
+		if !permisosEncontrados[permisoNombre] {
+			permisosNoEncontrados = append(permisosNoEncontrados, permisoNombre)
+		}
+	}
+
+	if len(permisosNoEncontrados) > 0 {
+		return nil, fmt.Errorf("status_cod:400, data:Los siguientes permisos no existen: %s", strings.Join(permisosNoEncontrados, ", "))
+	}
+
+	return permisosIDs, nil
+}
+
+// obtenerRolConPermisos obtiene un rol con sus permisos
+func (a *RolesAdapter) obtenerRolConPermisos(ctx context.Context, rolID int) (*roles.Rol, error) {
+	var rolDB RolDB
+	err := a.db.WithContext(ctx).
+		Select("id", "nombre_rol", "descripcion").
+		Where("id = ?", rolID).
+		First(&rolDB).Error
+
+	if err != nil {
+		return nil, a.handleQueryError(err, "obteniendo rol")
+	}
+
+	// Obtener permisos del rol
+	var permisosDB []PermisoDB
+	err = a.db.WithContext(ctx).
+		Table("permisos p").
+		Select("p.nombre_permiso").
+		Joins("INNER JOIN rol_x_permiso rxp ON p.id = rxp.id_permiso").
+		Where("rxp.id_rol = ?", rolID).
+		Find(&permisosDB).Error
+
+	if err != nil {
+		return nil, a.handleQueryError(err, "obteniendo permisos del rol")
+	}
+
+	permisos := make([]string, len(permisosDB))
+	for i, permisoDB := range permisosDB {
+		permisos[i] = permisoDB.NombrePermiso
+	}
+
+	return &roles.Rol{
+		ID:          rolDB.ID,
+		Nombre:      rolDB.NombreRol,
+		Descripcion: rolDB.Descripcion,
+		Permisos:    permisos,
+	}, nil
+}
+
+// Manejo de errores
+func (a *RolesAdapter) handleCreateError(err error, nombre string) error {
+	errStr := err.Error()
+
+	if strings.Contains(errStr, "duplicate") || strings.Contains(errStr, "Duplicate") {
+		validacion := utils.ValidarExistente("P2002", nombre)
+		if !validacion.OK {
+			return fmt.Errorf("status_cod:409, data:%s", validacion.Data)
+		}
+	}
+
+	return fmt.Errorf("status_cod:400, data:Ocurrió un error creando el rol")
+}
+
+func (a *RolesAdapter) handleQueryError(err error, operation string) error {
+	return fmt.Errorf("status_cod:400, data:Ocurrió un error %s", operation)
+}
+
+func (a *RolesAdapter) handleUpdateError(err error, nombre string) error {
+	errStr := err.Error()
+
+	if strings.Contains(errStr, "duplicate") || strings.Contains(errStr, "Duplicate") {
+		validacion := utils.ValidarExistente("P2002", nombre)
+		if !validacion.OK {
+			return fmt.Errorf("status_cod:409, data:%s", validacion.Data)
+		}
+	}
+
+	return fmt.Errorf("status_cod:400, data:Ocurrió un error actualizando el rol")
+}
+
+func (a *RolesAdapter) handleDeleteError(err error, id int) error {
+	errStr := err.Error()
+
+	if strings.Contains(errStr, "foreign") || strings.Contains(errStr, "constraint") {
+		return fmt.Errorf("status_cod:400, data:No se puede eliminar el rol porque tiene registros asociados")
+	}
+
+	return fmt.Errorf("status_cod:400, data:Ocurrió un error eliminando el rol")
+}
+
+// Modelos de base de datos
+type RolDB struct {
+	ID          int    `gorm:"primaryKey;column:id"`
+	NombreRol   string `gorm:"column:nombre_rol;uniqueIndex"`
+	Descripcion string `gorm:"column:descripcion"`
+}
+
+type PermisoDB struct {
+	ID            int    `gorm:"primaryKey;column:id"`
+	NombrePermiso string `gorm:"column:nombre_permiso"`
+	Descripcion   string `gorm:"column:descripcion"`
+}
+
+type RolXPermisoDB struct {
+	IDRol     int `gorm:"primaryKey;column:id_rol"`
+	IDPermiso int `gorm:"primaryKey;column:id_permiso"`
+}
+
+type UsuarioDB struct {
+	IDRol int `gorm:"column:id_rol"`
+}
