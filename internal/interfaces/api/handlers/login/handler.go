@@ -76,9 +76,6 @@ func (h *LoginHandler) Login(w http.ResponseWriter, r *http.Request) {
 		common.WriteJSONResponse(w, errorResponse, 401)
 		return
 	}
-
-	// Adaptar resultado del dominio a respuesta HTTP
-	fmt.Printf("✅ Login exitoso para: %s\n", reqDTO.Email)
 	response := common.NewSuccessResponse(result)
 	common.WriteJSONResponse(w, response, 200)
 }

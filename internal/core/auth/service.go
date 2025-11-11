@@ -197,10 +197,6 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 		ExpiresAt: cookieData.ExpiresAt,
 	}
 
-	logger.Info("✅ Login completado exitosamente",
-		"userID", usuarioRetrieved.ID,
-		"permisosCount", len(permisos))
-
 	return response, signedCookie, cookieData.ExpiresAt, nil
 }
 
@@ -347,7 +343,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 	}
 
 	response := &AuthResponse{
-		Message:   "Login exitoso",
+		Message:   "Usuario registrado con exito",
 		ExpiresAt: cookieData.ExpiresAt,
 	}
 
