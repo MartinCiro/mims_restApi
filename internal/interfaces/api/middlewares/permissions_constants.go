@@ -2,21 +2,21 @@ package middlewares
 
 // Permisos para Estados
 var (
-	PermissionEstadosListar   = []string{"estados:listar", "estados:leer"}
-	PermissionEstadosCrear    = []string{"estados:crear", "estados:escribir"}
-	PermissionEstadosEditar   = []string{"estados:editar", "estados:escribir"}
-	PermissionEstadosEliminar = []string{"estados:eliminar", "estados:escribir"}
-	PermissionEstadosVer      = []string{"estados:ver", "estados:leer"}
+	PermissionEstadosListar   = []string{"estado:listar", "estado:leer"}
+	PermissionEstadosCrear    = []string{"estado:escribir", "estado:crear"}
+	PermissionEstadosEditar   = []string{"estado:editar", "estado:actualizar"}
+	PermissionEstadosEliminar = []string{"estado:eliminar", "estado:escribir"}
+	PermissionEstadosVer      = []string{"estado:ver", "estado:leer"}
 )
 
 // Permisos para Roles
 var (
-	PermissionRolesListar   = []string{"roles:listar", "roles:leer"}
-	PermissionRolesCrear    = []string{"roles:crear", "roles:escribir"}
-	PermissionRolesEditar   = []string{"roles:editar", "roles:escribir"}
-	PermissionRolesEliminar = []string{"roles:eliminar", "roles:escribir"}
-	PermissionRolesVer      = []string{"roles:ver", "roles:leer"}
-	PermissionRolesPermisos = []string{"roles:permisos", "roles:leer"}
+	PermissionRolesVer      = []string{"rol:ver", "rol:leer"}
+	PermissionRolesListar   = []string{"rol:listar", "rol:leer"}
+	PermissionRolesPermisos = []string{"rol:permisos", "rol:leer_permisos"}
+	PermissionRolesCrear    = []string{"rol:escribir", "rol:crear"}
+	PermissionRolesEliminar = []string{"rol:eliminar", "rol:elimina"}
+	PermissionRolesEditar   = []string{"rol:editar", "rol:actualizar"}
 )
 
 // Permisos para Usuarios
