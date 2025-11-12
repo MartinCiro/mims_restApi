@@ -13,10 +13,10 @@ var (
 var (
 	PermissionRolesVer      = []string{"rol:ver", "rol:leer"}
 	PermissionRolesListar   = []string{"rol:listar", "rol:leer"}
-	PermissionRolesPermisos = []string{"rol:permisos", "rol:leer_permisos"}
 	PermissionRolesCrear    = []string{"rol:escribir", "rol:crear"}
 	PermissionRolesEliminar = []string{"rol:eliminar", "rol:elimina"}
 	PermissionRolesEditar   = []string{"rol:editar", "rol:actualizar"}
+	PermissionRolesPermisos = []string{"rol:permisos", "rol:leer_permisos"}
 )
 
 // Permisos para Usuarios

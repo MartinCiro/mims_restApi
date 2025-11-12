@@ -99,19 +99,17 @@ func (h *EstadosHandler) ActualizarEstado(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// ✅ VALIDAR EL DTO ANTES de procesar
+	req.ID = id
+
+	// ✅ VALIDAR DESPUÉS de asignar el ID
 	if errors := common.ValidateRequest(req); errors != nil {
 		common.WriteValidationErrors(w, errors, 400)
 		return
 	}
 
-	// Asegurar que el ID de la URL coincide con el del body
-	req.ID = id
-
 	ctx := r.Context()
 	estadoData := estadosDTOs.ToEstadoDataUpdate(req)
 
-	// ✅ Usar blank identifier _ ya que no necesitamos el estado retornado
 	_, err = h.estadoService.UpEstado(ctx, estadoData)
 	if err != nil {
 		common.WriteSimpleError(w, err.Error(), 400)
@@ -125,7 +123,7 @@ func (h *EstadosHandler) ActualizarEstado(w http.ResponseWriter, r *http.Request
 func (h *EstadosHandler) EliminarEstado(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
-	if err != nil {
+	if err != nil || id <= 0 { // ✅ Validar que sea mayor a 0
 		common.WriteSimpleError(w, "ID inválido", 400)
 		return
 	}
@@ -134,12 +132,10 @@ func (h *EstadosHandler) EliminarEstado(w http.ResponseWriter, r *http.Request) 
 	estadoData := coreEstados.EstadoDataXid{ID: id}
 	err = h.estadoService.DelEstado(ctx, estadoData)
 	if err != nil {
-		utils.WriteValidationError(w, err, 400)
+		common.WriteSimpleError(w, err.Error(), 400) // ✅ Cambiar por common.WriteSimpleError
 		return
 	}
 
-	response := common.NewSuccessResponse(map[string]string{
-		"message": "Estado eliminado correctamente",
-	})
+	response := common.NewSuccessResponse("Estado eliminado correctamente") // ✅ String directo
 	common.WriteJSONResponse(w, response, 200)
 }
