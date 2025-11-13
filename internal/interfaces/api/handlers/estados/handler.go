@@ -1,4 +1,3 @@
-// internal/interfaces/api/handlers/estados/handler.go
 package estados
 
 import (
@@ -132,10 +131,10 @@ func (h *EstadosHandler) EliminarEstado(w http.ResponseWriter, r *http.Request) 
 	estadoData := coreEstados.EstadoDataXid{ID: id}
 	err = h.estadoService.DelEstado(ctx, estadoData)
 	if err != nil {
-		common.WriteSimpleError(w, err.Error(), 400) // ✅ Cambiar por common.WriteSimpleError
+		common.WriteSimpleError(w, err.Error(), 400)
 		return
 	}
 
-	response := common.NewSuccessResponse("Estado eliminado correctamente") // ✅ String directo
+	response := common.NewSuccessResponse("Estado eliminado correctamente")
 	common.WriteJSONResponse(w, response, 200)
 }

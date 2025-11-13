@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"api_go/internal/core/roles"
+	"api_go/internal/infrastructure/database/models"
 	"api_go/internal/infrastructure/redis"
 	"api_go/pkg/utils"
 
@@ -28,7 +29,7 @@ func NewRolesAdapter(db *gorm.DB, redisService *redis.Cache) *RolesAdapter {
 // CrearRol implementa el puerto RolesPort
 func (a *RolesAdapter) CrearRol(ctx context.Context, rolData roles.RolData) (*roles.Rol, error) {
 	// Verificar si el rol ya existe
-	var rolExistente RolDB
+	var rolExistente models.Rol
 	err := a.db.WithContext(ctx).Where("nombre_rol = ?", rolData.Nombre).First(&rolExistente).Error
 	if err == nil {
 		return nil, fmt.Errorf("status_cod:409, data:Ya existe un rol con el nombre '%s'", rolData.Nombre)
@@ -42,40 +43,33 @@ func (a *RolesAdapter) CrearRol(ctx context.Context, rolData roles.RolData) (*ro
 		return nil, err
 	}
 
-	// Crear transacción
-	tx := a.db.WithContext(ctx).Begin()
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-		}
-	}()
-
-	// Crear el rol
-	rolDB := RolDB{
+	rolDB := models.Rol{
 		NombreRol:   rolData.Nombre,
 		Descripcion: rolData.Descripcion,
 	}
 
-	if err := tx.Create(&rolDB).Error; err != nil {
-		tx.Rollback()
+	// ✅ Usar a.db.Create en lugar de tx.Create
+	if err := a.db.WithContext(ctx).Create(&rolDB).Error; err != nil {
 		return nil, a.handleCreateError(err, rolData.Nombre)
 	}
 
+	// ✅ El resto en transacción si es necesario
+	tx := a.db.WithContext(ctx).Begin()
+
 	// Asignar permisos al rol
 	for _, permisoID := range permisosIDs {
-		rolPermiso := RolXPermisoDB{
+		rolPermiso := models.RolXPermiso{
 			IDRol:     rolDB.ID,
 			IDPermiso: permisoID,
 		}
 		if err := tx.Create(&rolPermiso).Error; err != nil {
 			tx.Rollback()
-			return nil, a.handleCreateError(err, "asignando permisos")
+			return nil, fmt.Errorf("status_cod:400, data:Error asignando permisos")
 		}
 	}
 
-	// Commit de la transacción
 	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("status_cod:400, data:Error al guardar el rol: %v", err)
+		return nil, fmt.Errorf("status_cod:400, data:Error al guardar los permisos del rol")
 	}
 
 	// Limpiar cache
@@ -104,11 +98,9 @@ func (a *RolesAdapter) ObtenerRoles(ctx context.Context) ([]roles.Rol, error) {
 		}
 	}
 
-	// Consultar base de datos
-	var rolesDB []RolDB
-	err = a.db.WithContext(ctx).
-		Select("id", "nombre_rol", "descripcion").
-		Find(&rolesDB).Error
+	// Consultar base de datos usando el modelo existente
+	var rolesDB []models.Rol
+	err = a.db.WithContext(ctx).Find(&rolesDB).Error
 
 	if err != nil {
 		return nil, a.handleQueryError(err, "consultando roles")
@@ -150,12 +142,9 @@ func (a *RolesAdapter) ObtenerRolXid(ctx context.Context, rolData roles.RolDataX
 		}
 	}
 
-	// Consultar base de datos
-	var rolDB RolDB
-	err = a.db.WithContext(ctx).
-		Select("id", "nombre_rol", "descripcion").
-		Where("id = ?", rolData.ID).
-		First(&rolDB).Error
+	// Consultar base de datos usando el modelo existente
+	var rolDB models.Rol
+	err = a.db.WithContext(ctx).Where("id = ?", rolData.ID).First(&rolDB).Error
 
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -181,7 +170,7 @@ func (a *RolesAdapter) ObtenerRolXid(ctx context.Context, rolData roles.RolDataX
 // ActualizarRol implementa el puerto RolesPort
 func (a *RolesAdapter) ActualizarRol(ctx context.Context, rolData roles.RolDataUpdate) (*roles.Rol, error) {
 	// Verificar si el rol existe
-	var rolExistente RolDB
+	var rolExistente models.Rol
 	err := a.db.WithContext(ctx).Where("id = ?", rolData.ID).First(&rolExistente).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -191,7 +180,7 @@ func (a *RolesAdapter) ActualizarRol(ctx context.Context, rolData roles.RolDataU
 	}
 
 	// Verificar si el nombre ya existe en otro rol
-	var rolConMismoNombre RolDB
+	var rolConMismoNombre models.Rol
 	err = a.db.WithContext(ctx).Where("nombre_rol = ? AND id != ?", rolData.Nombre, rolData.ID).First(&rolConMismoNombre).Error
 	if err == nil {
 		return nil, fmt.Errorf("status_cod:409, data:Ya existe otro rol con el nombre '%s'", rolData.Nombre)
@@ -214,25 +203,25 @@ func (a *RolesAdapter) ActualizarRol(ctx context.Context, rolData roles.RolDataU
 	}()
 
 	// Actualizar el rol
-	updates := RolDB{
-		NombreRol:   rolData.Nombre,
-		Descripcion: rolData.Descripcion,
+	updates := map[string]interface{}{
+		"nombre_rol":  rolData.Nombre,
+		"descripcion": rolData.Descripcion,
 	}
 
-	if err := tx.Model(&RolDB{}).Where("id = ?", rolData.ID).Updates(updates).Error; err != nil {
+	if err := tx.Model(&models.Rol{}).Where("id = ?", rolData.ID).Updates(updates).Error; err != nil {
 		tx.Rollback()
 		return nil, a.handleUpdateError(err, rolData.Nombre)
 	}
 
 	// Eliminar permisos actuales
-	if err := tx.Where("id_rol = ?", rolData.ID).Delete(&RolXPermisoDB{}).Error; err != nil {
+	if err := tx.Where("id_rol = ?", rolData.ID).Delete(&models.RolXPermiso{}).Error; err != nil {
 		tx.Rollback()
 		return nil, a.handleUpdateError(err, "eliminando permisos anteriores")
 	}
 
 	// Asignar nuevos permisos
 	for _, permisoID := range permisosIDs {
-		rolPermiso := RolXPermisoDB{
+		rolPermiso := models.RolXPermiso{
 			IDRol:     rolData.ID,
 			IDPermiso: permisoID,
 		}
@@ -264,7 +253,7 @@ func (a *RolesAdapter) ActualizarRol(ctx context.Context, rolData roles.RolDataU
 // EliminarRol implementa el puerto RolesPort
 func (a *RolesAdapter) EliminarRol(ctx context.Context, rolData roles.RolDataXid) error {
 	// Verificar si el rol existe
-	var rolExistente RolDB
+	var rolExistente models.Rol
 	err := a.db.WithContext(ctx).Where("id = ?", rolData.ID).First(&rolExistente).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -275,7 +264,7 @@ func (a *RolesAdapter) EliminarRol(ctx context.Context, rolData roles.RolDataXid
 
 	// Verificar si hay usuarios usando este rol
 	var countUsuarios int64
-	err = a.db.WithContext(ctx).Model(&UsuarioDB{}).Where("id_rol = ?", rolData.ID).Count(&countUsuarios).Error
+	err = a.db.WithContext(ctx).Model(&models.Usuario{}).Where("id_rol = ?", rolData.ID).Count(&countUsuarios).Error
 	if err != nil {
 		return a.handleDeleteError(err, rolData.ID)
 	}
@@ -293,13 +282,13 @@ func (a *RolesAdapter) EliminarRol(ctx context.Context, rolData roles.RolDataXid
 	}()
 
 	// Eliminar permisos del rol
-	if err := tx.Where("id_rol = ?", rolData.ID).Delete(&RolXPermisoDB{}).Error; err != nil {
+	if err := tx.Where("id_rol = ?", rolData.ID).Delete(&models.RolXPermiso{}).Error; err != nil {
 		tx.Rollback()
 		return a.handleDeleteError(err, rolData.ID)
 	}
 
 	// Eliminar el rol
-	result := tx.Where("id = ?", rolData.ID).Delete(&RolDB{})
+	result := tx.Where("id = ?", rolData.ID).Delete(&models.Rol{})
 	if result.Error != nil {
 		tx.Rollback()
 		return a.handleDeleteError(result.Error, rolData.ID)
@@ -336,11 +325,9 @@ func (a *RolesAdapter) ObtenerTodosLosPermisos(ctx context.Context) ([]string, e
 		}
 	}
 
-	// Consultar base de datos
-	var permisosDB []PermisoDB
-	err = a.db.WithContext(ctx).
-		Select("nombre_permiso").
-		Find(&permisosDB).Error
+	// Consultar base de datos usando el modelo existente
+	var permisosDB []models.Permiso
+	err = a.db.WithContext(ctx).Find(&permisosDB).Error
 
 	if err != nil {
 		return nil, a.handleQueryError(err, "consultando permisos")
@@ -368,8 +355,8 @@ func (a *RolesAdapter) obtenerPermisosIDs(ctx context.Context, permisosNombres [
 
 	// Si el primer permiso es "All", obtener todos los permisos
 	if len(permisosNombres) == 1 && permisosNombres[0] == "All" {
-		var todosPermisos []PermisoDB
-		err := a.db.WithContext(ctx).Select("id").Find(&todosPermisos).Error
+		var todosPermisos []models.Permiso
+		err := a.db.WithContext(ctx).Find(&todosPermisos).Error
 		if err != nil {
 			return nil, a.handleQueryError(err, "obteniendo todos los permisos")
 		}
@@ -382,9 +369,8 @@ func (a *RolesAdapter) obtenerPermisosIDs(ctx context.Context, permisosNombres [
 	}
 
 	// Obtener IDs de permisos específicos
-	var permisosDB []PermisoDB
+	var permisosDB []models.Permiso
 	err := a.db.WithContext(ctx).
-		Select("id", "nombre_permiso").
 		Where("nombre_permiso IN ?", permisosNombres).
 		Find(&permisosDB).Error
 
@@ -418,22 +404,18 @@ func (a *RolesAdapter) obtenerPermisosIDs(ctx context.Context, permisosNombres [
 
 // obtenerRolConPermisos obtiene un rol con sus permisos
 func (a *RolesAdapter) obtenerRolConPermisos(ctx context.Context, rolID int) (*roles.Rol, error) {
-	var rolDB RolDB
-	err := a.db.WithContext(ctx).
-		Select("id", "nombre_rol", "descripcion").
-		Where("id = ?", rolID).
-		First(&rolDB).Error
-
+	var rolDB models.Rol
+	err := a.db.WithContext(ctx).Where("id = ?", rolID).First(&rolDB).Error
 	if err != nil {
 		return nil, a.handleQueryError(err, "obteniendo rol")
 	}
 
 	// Obtener permisos del rol
-	var permisosDB []PermisoDB
+	var permisosDB []models.Permiso
 	err = a.db.WithContext(ctx).
 		Table("permisos p").
 		Select("p.nombre_permiso").
-		Joins("INNER JOIN rol_x_permiso rxp ON p.id = rxp.id_permiso").
+		Joins("INNER JOIN rol_x_permisos rxp ON p.id = rxp.id_permiso").
 		Where("rxp.id_rol = ?", rolID).
 		Find(&permisosDB).Error
 
@@ -454,7 +436,7 @@ func (a *RolesAdapter) obtenerRolConPermisos(ctx context.Context, rolID int) (*r
 	}, nil
 }
 
-// Manejo de errores
+// Manejo de errores (sin cambios)
 func (a *RolesAdapter) handleCreateError(err error, nombre string) error {
 	errStr := err.Error()
 
@@ -493,26 +475,4 @@ func (a *RolesAdapter) handleDeleteError(err error, id int) error {
 	}
 
 	return fmt.Errorf("status_cod:400, data:Ocurrió un error eliminando el rol")
-}
-
-// Modelos de base de datos
-type RolDB struct {
-	ID          int    `gorm:"primaryKey;column:id"`
-	NombreRol   string `gorm:"column:nombre_rol;uniqueIndex"`
-	Descripcion string `gorm:"column:descripcion"`
-}
-
-type PermisoDB struct {
-	ID            int    `gorm:"primaryKey;column:id"`
-	NombrePermiso string `gorm:"column:nombre_permiso"`
-	Descripcion   string `gorm:"column:descripcion"`
-}
-
-type RolXPermisoDB struct {
-	IDRol     int `gorm:"primaryKey;column:id_rol"`
-	IDPermiso int `gorm:"primaryKey;column:id_permiso"`
-}
-
-type UsuarioDB struct {
-	IDRol int `gorm:"column:id_rol"`
 }

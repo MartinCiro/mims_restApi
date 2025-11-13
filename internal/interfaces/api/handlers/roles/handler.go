@@ -113,17 +113,17 @@ func (h *RolesHandler) ActualizarRol(w http.ResponseWriter, r *http.Request) {
 	req.ID = id
 
 	ctx := r.Context()
-	rolData := rolesDTOs.ToRolDataUpdate(req) // ✅ Usar adapter
+	rolData := rolesDTOs.ToRolDataUpdate(req)
 
-	rol, err := h.rolService.ActualizarRol(ctx, rolData)
+	_, err = h.rolService.ActualizarRol(ctx, rolData)
 	if err != nil {
 		logger.Error("❌ Error actualizando rol", "error", err, "id", id)
-		utils.WriteValidationError(w, err, 400)
+		common.WriteSimpleError(w, err.Error(), 400)
 		return
 	}
 
-	response := common.NewSuccessResponse(rolesDTOs.FromRol(rol))
-	common.WriteJSONResponse(w, response, 200)
+	successResponse := common.NewSuccessResponse("Se ha actualizado el rol correctamente")
+	common.WriteJSONResponse(w, successResponse, 200)
 }
 
 func (h *RolesHandler) EliminarRol(w http.ResponseWriter, r *http.Request) {
@@ -142,13 +142,11 @@ func (h *RolesHandler) EliminarRol(w http.ResponseWriter, r *http.Request) {
 	err = h.rolService.EliminarRol(ctx, rolData)
 	if err != nil {
 		logger.Error("❌ Error eliminando rol", "error", err, "id", id)
-		utils.WriteValidationError(w, err, 400)
+		common.WriteSimpleError(w, err.Error(), 400)
 		return
 	}
 
-	response := common.NewSuccessResponse(map[string]string{
-		"message": "Rol eliminado correctamente",
-	})
+	response := common.NewSuccessResponse("Rol eliminado correctamente")
 	common.WriteJSONResponse(w, response, 200)
 }
 
