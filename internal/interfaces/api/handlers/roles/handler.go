@@ -68,7 +68,7 @@ func (h *RolesHandler) ObtenerRolXid(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RolesHandler) CrearRol(w http.ResponseWriter, r *http.Request) {
-	var req rolesDTOs.CreateRolRequest // ✅ Usar DTO definido
+	var req rolesDTOs.CreateRolRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Error("❌ Error decodificando solicitud", "error", err)

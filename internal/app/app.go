@@ -222,15 +222,15 @@ func (a *App) runMigrations() error {
 			logger.Error("Error migrando modelo", "model", fmt.Sprintf("%T", model), "error", err)
 			return err
 		}
-		logger.Info("✅ Modelo migrado", "model", fmt.Sprintf("%T", model))
+		//logger.Info("✅ Modelo migrado", "model", fmt.Sprintf("%T", model))
 	}
 
-	logger.Info("✅ Todas las migraciones completadas")
+	//logger.Info("✅ Todas las migraciones completadas")
 	return nil
 }
 
 func (a *App) Shutdown() {
-	logger.Info("cerrando servicios de la aplicación")
+	//logger.Info("cerrando servicios de la aplicación")
 
 	// Cerrar base de datos
 	if a.DB != nil {

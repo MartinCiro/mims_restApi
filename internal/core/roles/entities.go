@@ -10,9 +10,9 @@ type Rol struct {
 
 // RolData contiene los datos para crear un rol
 type RolData struct {
-	Nombre      string   `json:"nombre" binding:"required"`
-	Descripcion string   `json:"descripcion" binding:"required"`
-	Permisos    []string `json:"permisos" binding:"required"`
+	Nombre      string `json:"nombre" binding:"required"`
+	Descripcion string `json:"descripcion" binding:"required"`
+	Permisos    []int  `json:"permisos" binding:"required"`
 }
 
 // RolDataXid contiene el ID para buscar o eliminar un rol
@@ -22,8 +22,8 @@ type RolDataXid struct {
 
 // RolDataUpdate contiene los datos para actualizar un rol
 type RolDataUpdate struct {
-	ID          int      `json:"id" binding:"required"`
-	Nombre      string   `json:"nombre" binding:"required"`
-	Descripcion string   `json:"descripcion" binding:"required"`
-	Permisos    []string `json:"permisos" binding:"required"`
+	ID          int     `json:"id" binding:"required"`
+	Nombre      *string `json:"nombre,omitempty"`
+	Descripcion *string `json:"descripcion,omitempty"`
+	Permisos    []int   `json:"permisos,omitempty"`
 }

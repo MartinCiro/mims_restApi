@@ -57,7 +57,7 @@ func main() {
 
 	// Iniciar servidor en goroutine
 	go func() {
-		logger.Info("iniciando servidor HTTP", "address", server.Addr)
+		//logger.Info("iniciando servidor HTTP", "address", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			serverErr <- err
 			logger.Error("error en servidor HTTP", "error", err)

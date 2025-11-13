@@ -62,11 +62,6 @@ func (pm *PermissionsMiddleware) Handler(requiredPermissions []string) func(http
 			// Verificar si el usuario tiene al menos uno de los permisos requeridos
 			hasPermission := pm.hasAnyPermission(user.Permisos, requiredPermissions)
 			if !hasPermission {
-				logger.Warn("usuario sin permisos para endpoint",
-					"user_id", user.ID,
-					"username", user.Username,
-					"required_permissions", requiredPermissions,
-					"user_permissions", user.Permisos)
 				response := common.NewErrorResponse(403, "No posee permisos suficientes para realizar esta acción")
 				common.WriteJSONResponse(w, response, 403)
 				return

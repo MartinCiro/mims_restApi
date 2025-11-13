@@ -38,7 +38,7 @@ func (a *RolesAdapter) CrearRol(ctx context.Context, rolData roles.RolData) (*ro
 	}
 
 	// Obtener permisos basados en la lista recibida
-	permisosIDs, err := a.obtenerPermisosIDs(ctx, rolData.Permisos)
+	permisosIDs, err := a.permisosIDs(ctx, rolData.Permisos)
 	if err != nil {
 		return nil, err
 	}
@@ -179,22 +179,18 @@ func (a *RolesAdapter) ActualizarRol(ctx context.Context, rolData roles.RolDataU
 		return nil, a.handleQueryError(err, "verificando rol existente")
 	}
 
-	// Verificar si el nombre ya existe en otro rol
-	var rolConMismoNombre models.Rol
-	err = a.db.WithContext(ctx).Where("nombre_rol = ? AND id != ?", rolData.Nombre, rolData.ID).First(&rolConMismoNombre).Error
-	if err == nil {
-		return nil, fmt.Errorf("status_cod:409, data:Ya existe otro rol con el nombre '%s'", rolData.Nombre)
-	} else if err != gorm.ErrRecordNotFound {
-		return nil, a.handleQueryError(err, "verificando nombre duplicado")
+	// ✅ Verificar nombre duplicado solo si se está actualizando el nombre
+	if rolData.Nombre != nil {
+		var rolConMismoNombre models.Rol
+		err = a.db.WithContext(ctx).Where("nombre_rol = ? AND id != ?", *rolData.Nombre, rolData.ID).First(&rolConMismoNombre).Error
+		if err == nil {
+			return nil, fmt.Errorf("status_cod:409, data:Ya existe otro rol con el nombre '%s'", *rolData.Nombre)
+		} else if err != gorm.ErrRecordNotFound {
+			return nil, a.handleQueryError(err, "verificando nombre duplicado")
+		}
 	}
 
-	// Obtener permisos basados en la lista recibida
-	permisosIDs, err := a.obtenerPermisosIDs(ctx, rolData.Permisos)
-	if err != nil {
-		return nil, err
-	}
-
-	// Crear transacción
+	// Transacción
 	tx := a.db.WithContext(ctx).Begin()
 	defer func() {
 		if r := recover(); r != nil {
@@ -202,36 +198,49 @@ func (a *RolesAdapter) ActualizarRol(ctx context.Context, rolData roles.RolDataU
 		}
 	}()
 
-	// Actualizar el rol
-	updates := map[string]interface{}{
-		"nombre_rol":  rolData.Nombre,
-		"descripcion": rolData.Descripcion,
+	// ✅ Actualizar solo los campos proporcionados
+	updates := make(map[string]interface{})
+	if rolData.Nombre != nil {
+		updates["nombre_rol"] = *rolData.Nombre
+	}
+	if rolData.Descripcion != nil {
+		updates["descripcion"] = *rolData.Descripcion
 	}
 
-	if err := tx.Model(&models.Rol{}).Where("id = ?", rolData.ID).Updates(updates).Error; err != nil {
-		tx.Rollback()
-		return nil, a.handleUpdateError(err, rolData.Nombre)
-	}
-
-	// Eliminar permisos actuales
-	if err := tx.Where("id_rol = ?", rolData.ID).Delete(&models.RolXPermiso{}).Error; err != nil {
-		tx.Rollback()
-		return nil, a.handleUpdateError(err, "eliminando permisos anteriores")
-	}
-
-	// Asignar nuevos permisos
-	for _, permisoID := range permisosIDs {
-		rolPermiso := models.RolXPermiso{
-			IDRol:     rolData.ID,
-			IDPermiso: permisoID,
-		}
-		if err := tx.Create(&rolPermiso).Error; err != nil {
+	if len(updates) > 0 {
+		if err := tx.Model(&models.Rol{}).Where("id = ?", rolData.ID).Updates(updates).Error; err != nil {
 			tx.Rollback()
-			return nil, a.handleUpdateError(err, "asignando nuevos permisos")
+			return nil, a.handleUpdateError(err, "actualizando rol")
 		}
 	}
 
-	// Commit de la transacción
+	// ✅ Actualizar permisos solo si se proporcionaron
+	if rolData.Permisos != nil {
+		// Eliminar permisos actuales
+		if err := tx.Where("id_rol = ?", rolData.ID).Delete(&models.RolXPermiso{}).Error; err != nil {
+			tx.Rollback()
+			return nil, a.handleUpdateError(err, "eliminando permisos anteriores")
+		}
+
+		// Validar y asignar nuevos permisos
+		permisosIDs, err := a.permisosIDs(ctx, rolData.Permisos)
+		if err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+
+		for _, permisoID := range permisosIDs {
+			rolPermiso := models.RolXPermiso{
+				IDRol:     rolData.ID,
+				IDPermiso: permisoID,
+			}
+			if err := tx.Create(&rolPermiso).Error; err != nil {
+				tx.Rollback()
+				return nil, a.handleUpdateError(err, "asignando nuevos permisos")
+			}
+		}
+	}
+
 	if err := tx.Commit().Error; err != nil {
 		return nil, fmt.Errorf("status_cod:400, data:Error al actualizar el rol: %v", err)
 	}
@@ -475,4 +484,26 @@ func (a *RolesAdapter) handleDeleteError(err error, id int) error {
 	}
 
 	return fmt.Errorf("status_cod:400, data:Ocurrió un error eliminando el rol")
+}
+
+func (a *RolesAdapter) permisosIDs(ctx context.Context, permisosIDs []int) ([]int, error) {
+	if len(permisosIDs) == 0 {
+		return nil, fmt.Errorf("status_cod:400, data:Se requiere al menos un permiso")
+	}
+
+	// Verificar que todos los IDs existen
+	var count int64
+	err := a.db.WithContext(ctx).Model(&models.Permiso{}).
+		Where("id IN ?", permisosIDs).
+		Count(&count).Error
+
+	if err != nil {
+		return nil, a.handleQueryError(err, "validando permisos")
+	}
+
+	if int(count) != len(permisosIDs) {
+		return nil, fmt.Errorf("status_cod:400, data:Uno o más permisos no existen")
+	}
+
+	return permisosIDs, nil
 }

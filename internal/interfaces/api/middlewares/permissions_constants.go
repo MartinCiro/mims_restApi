@@ -28,7 +28,7 @@ var (
 
 // Permisos para login
 var (
-	PermissionLoginLogout = []string{"login:logout", "login:cerrar_sesion"}
+	PermissionLoginLogout = []string{"login:logout", "auth:logout"}
 )
 
 // Permisos administrativos

@@ -2,17 +2,16 @@ package roles
 
 // CreateRolRequest DTO para crear rol (desde API)
 type CreateRolRequest struct {
-	Nombre      string   `json:"nombre" binding:"required"`
-	Descripcion string   `json:"descripcion" binding:"required"`
-	Permisos    []string `json:"permisos" binding:"required"`
+	Nombre      string `json:"nombre" binding:"required"`
+	Descripcion string `json:"descripcion" binding:"required"`
+	Permisos    []int  `json:"permisos" validate:"required,min=1"`
 }
 
-// UpdateRolRequest DTO para actualizar rol (desde API)
 type UpdateRolRequest struct {
-	ID          int      `json:"id" binding:"required"`
-	Nombre      string   `json:"nombre" binding:"required"`
-	Descripcion string   `json:"descripcion" binding:"required"`
-	Permisos    []string `json:"permisos" binding:"required"`
+	ID          int     `json:"id" validate:"required,min=1"`
+	Nombre      *string `json:"nombre,omitempty" validate:"omitempty,min=1,max=100"`
+	Descripcion *string `json:"descripcion,omitempty" validate:"omitempty"`
+	Permisos    []int   `json:"permisos,omitempty" validate:"omitempty,min=1"`
 }
 
 // GetRolRequest DTO para obtener rol por ID (desde API)
