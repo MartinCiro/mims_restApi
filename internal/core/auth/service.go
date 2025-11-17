@@ -265,26 +265,32 @@ func (s *AuthService) GetUserProfile(ctx context.Context, userID string) (*commo
 }
 
 type RegisterRequest struct {
-	Username  string  `json:"username"`
-	Email     string  `json:"email"`
-	Password  string  `json:"password"`
-	RolNombre *string `json:"rol_nombre,omitempty"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	RolId    *int   `json:"rol_nombre,omitempty"`
 }
 
-func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, currentUser *User) (*AuthResponse, string, time.Time, error) {
-	logger.Info("Iniciando registro de usuario", "username", req.Username, "email", req.Email)
-
+func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, currentUser *User) (interface{}, string, time.Time, error) {
 	var rolNombre string
 	var estadoNombre string = "activo"
 
 	if currentUser != nil {
-		hasPermission := s.hasPermission(currentUser.Permisos, "usuarios.crear")
+		hasPermission := s.hasPermission(currentUser.Permisos, "usuario:crear")
 		if !hasPermission {
-			return nil, "", time.Time{}, fmt.Errorf("no tiene permisos para crear usuarios")
+			return nil, "", time.Time{}, fmt.Errorf("No tiene permisos para crear usuarios")
 		}
 
-		if req.RolNombre != nil {
-			rolNombre = *req.RolNombre
+		if req.RolId != nil {
+			// CORRECCIÓN: Obtener el objeto Rol y luego extraer el nombre
+			rol, err := s.rolRepo.FindByID(ctx, *req.RolId)
+			if err != nil {
+				return nil, "", time.Time{}, fmt.Errorf("error buscando rol por ID: %v", err)
+			}
+			if rol == nil {
+				return nil, "", time.Time{}, fmt.Errorf("rol con ID %d no encontrado", *req.RolId)
+			}
+			rolNombre = rol.NombreRol // Asumiento que el campo se llama NombreRol
 		} else {
 			rolNombre = "usuario"
 		}
@@ -342,12 +348,13 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 		return nil, "", time.Time{}, fmt.Errorf("error generando cookie de autenticación: %v", err)
 	}
 
-	response := &AuthResponse{
-		Message:   "Usuario registrado con exito",
-		ExpiresAt: cookieData.ExpiresAt,
+	// CAMBIO AQUÍ: Retornar diferentes estructuras según el caso
+	if currentUser != nil {
+		// Retornar solo el string para "Usuario creado correctamente"
+		return "Usuario creado correctamente", signedCookie, cookieData.ExpiresAt, nil
+	} else {
+		return "Usuario registrado con exito", signedCookie, cookieData.ExpiresAt, nil
 	}
-
-	return response, signedCookie, cookieData.ExpiresAt, nil
 }
 
 func (s *AuthService) ValidateCookie(cookieValue string) (*User, error) {

@@ -109,8 +109,21 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 		cookies.SetAuthCookie(w, signedCookie, expiresAt)
 	}
 
-	responseData := map[string]interface{}{
-		"Message": authResponse.Message,
+	// CAMBIO AQUÍ: Manejar diferentes tipos de respuesta
+	var responseData interface{}
+
+	if currentUser != nil {
+		responseData = authResponse
+	} else {
+		if authResp, ok := authResponse.(*auth.AuthResponse); ok {
+			responseData = map[string]interface{}{
+				"Message": authResp.Message,
+			}
+		} else {
+			responseData = map[string]interface{}{
+				"Message": "Usuario registrado con exito",
+			}
+		}
 	}
 
 	successResponse := common.NewSuccessResponse(responseData)

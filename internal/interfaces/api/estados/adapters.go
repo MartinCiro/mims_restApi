@@ -1,4 +1,3 @@
-// internal/interfaces/api/estados/adapters.go
 package estados
 
 import "api_go/internal/core/estados"

@@ -21,9 +21,10 @@ var (
 
 // Permisos para Usuarios
 var (
-	PermissionUsuariosListar = []string{"usuarios:listar", "usuarios:leer"}
-	PermissionUsuariosCrear  = []string{"usuarios:crear", "usuarios:escribir"}
-	PermissionUsuariosEditar = []string{"usuarios:editar", "usuarios:escribir"}
+	PermissionUsuariosListar    = []string{"usuario:listar", "usuario:leer"}
+	PermissionUsuariosCrear     = []string{"usuario:crear", "usuario:escribir"}
+	PermissionUsuariosEditar    = []string{"usuario:editar", "usuario:escribir"}
+	PermissionUsuariosListarXid = []string{"usuario:listar_xid", "usuario:leer"}
 )
 
 // Permisos para login

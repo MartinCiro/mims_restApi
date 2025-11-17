@@ -12,6 +12,7 @@ import (
 	common_handler "api_go/internal/interfaces/api/handlers/common"
 	"api_go/internal/interfaces/api/handlers/estados"
 	"api_go/internal/interfaces/api/handlers/roles"
+	"api_go/internal/interfaces/api/handlers/usuarios"
 	"api_go/internal/interfaces/api/middlewares"
 )
 
@@ -74,6 +75,7 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	authHandler := auth.NewAuthHandler(app.AuthService)
 	profileHandler := auth.NewProfileHandler(app.AuthService)
 	rolesHandler := roles.NewRolesHandler(app.RolService)
+	usuariosHandler := usuarios.NewUsuariosHandler(app.UsuarioService)
 
 	// ========== RUTAS PÚBLICAS ==========
 
@@ -90,6 +92,26 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 
 	// Crear un subrouter para rutas protegidas
 	protected := http.NewServeMux()
+
+	protected.Handle("GET /api/usuarios",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionUsuariosListar)(
+			http.HandlerFunc(usuariosHandler.ObtenerUsuarios),
+		))
+
+	protected.Handle("GET /api/usuarios/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionUsuariosListarXid)(
+			http.HandlerFunc(usuariosHandler.ObtenerUsuarioXid),
+		))
+
+	protected.Handle("POST /api/usuarios",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionUsuariosCrear)(
+			http.HandlerFunc(authHandler.Register),
+		))
+
+	/* protected.Handle("PUT /api/usuarios/{id}",
+	authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionUsuariosEditar)(
+		http.HandlerFunc(usuariosHandler.ActualizarUsuario),
+	)) */
 
 	// Rutas de Estados con permisos
 	protected.Handle("GET /api/estados",

@@ -6,6 +6,7 @@ import (
 	"api_go/internal/core/estados"
 	"api_go/internal/core/login"
 	"api_go/internal/core/roles"
+	"api_go/internal/core/usuarios"
 	"api_go/internal/infrastructure/adapters"
 	"api_go/internal/infrastructure/cookies"
 	"api_go/internal/infrastructure/database"
@@ -33,9 +34,10 @@ type App struct {
 	CookieSigner *cookies.CookieSigner
 
 	// Servicios del Core
-	AuthService   *auth.AuthService
-	EstadoService *estados.EstadoService
-	RolService    *roles.RolService
+	AuthService    *auth.AuthService
+	EstadoService  *estados.EstadoService
+	RolService     *roles.RolService
+	UsuarioService *usuarios.UsuarioService
 
 	// Servicios de Utilidad
 	PasswordService *utils.PasswordService
@@ -170,6 +172,9 @@ func (a *App) initializeServices() error {
 	// ✅ INICIALIZAR ROLES ADAPTER Y SERVICE
 	rolesAdapter := adapters.NewRolesAdapter(a.DB, a.RedisCache)
 	a.RolService = roles.NewRolService(rolesAdapter)
+
+	usuariosAdapter := adapters.NewUsuariosAdapter(a.DB, a.RedisCache)
+	a.UsuarioService = usuarios.NewUsuarioService(usuariosAdapter)
 
 	// AuthAdapter coordina los repositorios
 	authAdapter := repositories.NewAuthAdapter(usuarioRepo, rolRepo, permisoRepo)

@@ -1,6 +1,9 @@
 package auth
 
-import "context"
+import (
+	"api_go/internal/infrastructure/database/models"
+	"context"
+)
 
 type AuthPort interface {
 	RetrieveUser(ctx context.Context, authData AuthData) (*User, error)
@@ -14,6 +17,7 @@ type UserRepositoryPort interface {
 
 type RolRepositoryPort interface {
 	FindRolIDByName(ctx context.Context, nombre string) (int, error)
+	FindByID(ctx context.Context, id int) (*models.Rol, error)
 }
 
 type EstadoRepositoryPort interface {
