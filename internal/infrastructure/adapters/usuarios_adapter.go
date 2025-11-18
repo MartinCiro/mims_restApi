@@ -187,19 +187,46 @@ func (a *UsuariosAdapter) ActualizarUsuario(ctx context.Context, usuarioData usu
 
 	// Preparar updates
 	updates := make(map[string]interface{})
-	updates["updated_at"] = time.Now()
 
+	// Campos básicos
 	if usuarioData.Username != nil {
-		updates["username"] = *usuarioData.Username
+		updates["NomUser"] = *usuarioData.Username
 	}
 	if usuarioData.Email != nil {
 		updates["email"] = *usuarioData.Email
 	}
+	if usuarioData.Nombres != nil {
+		updates["nombres"] = *usuarioData.Nombres
+	}
+	if usuarioData.Apellido != nil {
+		updates["apellido"] = *usuarioData.Apellido
+	}
+
+	// Campos de perfil
+	if usuarioData.InfoPerfil != nil {
+		updates["info_perfil"] = *usuarioData.InfoPerfil
+	}
+	if usuarioData.NumContacto != nil {
+		updates["num_contacto"] = *usuarioData.NumContacto
+	}
+	if usuarioData.FechaNacimiento != nil {
+		updates["fecha_nacimiento"] = *usuarioData.FechaNacimiento
+	}
+
+	// Campos de relaciones
 	if usuarioData.RolID != nil {
-		updates["rol_id"] = *usuarioData.RolID
+		updates["IDRol"] = *usuarioData.RolID
 	}
 	if usuarioData.EstadoID != nil {
-		updates["estado_id"] = *usuarioData.EstadoID
+		updates["EstadoID"] = *usuarioData.EstadoID // ← Cambiado a EstadoID
+	}
+
+	// Agregar fecha de actualización (si existe en tu tabla)
+	// updates["fecha_actualizacion"] = time.Now()
+
+	// Si no hay campos para actualizar, retornar el usuario existente
+	if len(updates) == 0 {
+		return a.toUsuarioEntityConRelaciones(&usuarioExistente), nil
 	}
 
 	// Actualizar en base de datos
@@ -211,15 +238,20 @@ func (a *UsuariosAdapter) ActualizarUsuario(ctx context.Context, usuarioData usu
 		return nil, a.handleUpdateError(err, usuarioData.Username, usuarioData.Email)
 	}
 
-	// Obtener usuario actualizado
+	// Obtener usuario actualizado CON LOS NOMBRES CORRECTOS DE RELACIONES
 	var usuarioActualizado models.Usuario
-	err = a.db.WithContext(ctx).Where("documento = ?", usuarioData.Documento).First(&usuarioActualizado).Error
+	err = a.db.WithContext(ctx).
+		Preload("Rol").
+		Preload("Estado").
+		Where("documento = ?", usuarioData.Documento).
+		First(&usuarioActualizado).Error
+
 	if err != nil {
 		return nil, a.handleQueryError(err, "obteniendo usuario actualizado")
 	}
 
 	// Actualizar cache
-	//a.actualizarCacheUsuario(ctx, usuarioData.Documento, &usuarioActualizado)
+	a.actualizarCacheUsuario(ctx, usuarioData.Documento, &usuarioActualizado)
 
 	return a.toUsuarioEntityConRelaciones(&usuarioActualizado), nil
 }
@@ -257,8 +289,7 @@ func (a *UsuariosAdapter) CambiarPassword(ctx context.Context, cambiarPasswordDa
 	err = a.db.WithContext(ctx).Model(&models.Usuario{}).
 		Where("documento = ?", cambiarPasswordData.ID).
 		Updates(map[string]interface{}{
-			"password":   string(hashedPassword),
-			"updated_at": time.Now(),
+			"password": string(hashedPassword),
 		}).Error
 
 	if err != nil {
@@ -344,41 +375,6 @@ func (a *UsuariosAdapter) ObtenerUsuarioConRelaciones(ctx context.Context, usuar
 	return a.toUsuarioConRelacionesEntity(&usuarioDB), nil
 }
 
-// Mapeo de DB a Entity
-/* func (a *UsuariosAdapter) toUsuarioEntity(usuarioDB *models.Usuario) *usuarios.Usuario {
-	var rolNombre string
-
-	rol, err := a.rolesAdapter.ObtenerRolXid(context.Background(), roles.RolDataXid{ID: usuarioDB.IDRol})
-	if err == nil && rol != nil {
-		rolNombre = rol.Nombre
-	} else {
-		rolNombre = "desconocido"
-	}
-
-	var estadoNombre string
-	estado, err := a.estadosAdapter.ObtenerEstadosXid(context.Background(), estados.EstadoDataXid{ID: usuarioDB.EstadoID})
-	if err == nil && estado != nil {
-		estadoNombre = estado.Nombre
-	} else {
-		estadoNombre = "desconocido"
-	}
-
-	return &usuarios.Usuario{
-		Documento:          usuarioDB.Documento,
-		Nombres:            usuarioDB.Nombres,
-		Apellido:           usuarioDB.Apellido,
-		NombreCompleto:     usuarioDB.Nombres + " " + usuarioDB.Apellido, // Concatenar nombre + apellido
-		Email:              usuarioDB.Email,
-		Username:           usuarioDB.NomUser, // Mapeo correcto
-		RolID:              usuarioDB.IDRol,
-		EstadoID:           usuarioDB.EstadoID,
-		RolNombre:          rolNombre,
-		EstadoNombre:       estadoNombre,
-		FechaRegistro:      usuarioDB.FechaRegistro,
-		FechaActualizacion: time.Now(), // O usar otro campo si tienes en el modelo
-	}
-} */
-
 // Mapeo de DB a Entity con relaciones
 func (a *UsuariosAdapter) toUsuarioConRelacionesEntity(usuarioDB *models.Usuario) *usuarios.UsuarioConRelaciones {
 	rolNombre := ""
@@ -403,26 +399,26 @@ func (a *UsuariosAdapter) toUsuarioConRelacionesEntity(usuarioDB *models.Usuario
 }
 
 // Métodos auxiliares para cache
-func (a *UsuariosAdapter) actualizarCacheUsuario(ctx context.Context, userID int, usuarioDB *models.Usuario) {
+func (a *UsuariosAdapter) actualizarCacheUsuario(ctx context.Context, userID string, usuarioDB *models.Usuario) {
 	// Actualizar cache individual
 	usuarioEntity := a.toUsuarioEntityConRelaciones(usuarioDB)
 	usuarioJSON, err := json.Marshal(usuarioEntity)
 	if err == nil {
-		a.redisService.Set(ctx, fmt.Sprintf("usuario:%d", userID), string(usuarioJSON), 1800)
+		a.redisService.Set(ctx, fmt.Sprintf("usuario:%s", userID), string(usuarioJSON), 1800)
 	}
 
 	// Actualizar cache de lista
-	//a.actualizarCacheLista(ctx, userID, usuarioEntity)
+	a.actualizarCacheLista(ctx, userID, usuarioEntity)
 }
 
-/* func (a *UsuariosAdapter) actualizarCacheLista(ctx context.Context, userID int, usuarioEntity *usuarios.Usuario) {
+func (a *UsuariosAdapter) actualizarCacheLista(ctx context.Context, userID string, usuarioEntity *usuarios.Usuario) {
 	cachedUsuarios, err := a.redisService.Get(ctx, "usuarios:lista")
 	if err == nil && cachedUsuarios != "" {
 		var usuariosCache []usuarios.Usuario
 		if err := json.Unmarshal([]byte(cachedUsuarios), &usuariosCache); err == nil {
 			// Actualizar usuario en la lista
 			for i, u := range usuariosCache {
-				if u.ID == userID {
+				if u.Documento == userID {
 					usuariosCache[i] = *usuarioEntity
 					break
 				}
@@ -431,28 +427,10 @@ func (a *UsuariosAdapter) actualizarCacheUsuario(ctx context.Context, userID int
 			a.redisService.Set(ctx, "usuarios:lista", string(updatedJSON), 1800)
 		}
 	}
-} */
-
-func (a *UsuariosAdapter) actualizarCacheListaEliminado(ctx context.Context, userID string) {
-	cachedUsuarios, err := a.redisService.Get(ctx, "usuarios:lista")
-	if err == nil && cachedUsuarios != "" {
-		var usuariosCache []usuarios.Usuario
-		if err := json.Unmarshal([]byte(cachedUsuarios), &usuariosCache); err == nil {
-			// Filtrar usuario eliminado
-			filtered := make([]usuarios.Usuario, 0)
-			for _, u := range usuariosCache {
-				if u.Documento != userID {
-					filtered = append(filtered, u)
-				}
-			}
-			filteredJSON, _ := json.Marshal(filtered)
-			a.redisService.Set(ctx, "usuarios:lista", string(filteredJSON), 1800)
-		}
-	}
 }
 
 func (a *UsuariosAdapter) handleQueryError(err error, operation string) error {
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error %s", operation)
+	return fmt.Errorf("Ocurrió un error %s", operation)
 }
 
 func (a *UsuariosAdapter) handleDeleteError(err error, id string) error {
@@ -460,10 +438,10 @@ func (a *UsuariosAdapter) handleDeleteError(err error, id string) error {
 	logger.Error("Este es el id %d", id)
 
 	if strings.Contains(errStr, "foreign") || strings.Contains(errStr, "constraint") {
-		return fmt.Errorf("status_cod:400, data:No se puede eliminar el usuario porque tiene registros asociados")
+		return fmt.Errorf("No se puede eliminar el usuario porque tiene registros asociados")
 	}
 
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error eliminando el usuario")
+	return fmt.Errorf("Ocurrió un error eliminando el usuario")
 }
 
 func (a *UsuariosAdapter) handleUpdateError(err error, username, email *string) error {
@@ -483,6 +461,5 @@ func (a *UsuariosAdapter) handleUpdateError(err error, username, email *string) 
 			}
 		}
 	}
-
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error actualizando el usuario")
+	return fmt.Errorf("Ocurrió un error actualizando el usuario")
 }

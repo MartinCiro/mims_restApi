@@ -216,7 +216,7 @@ make generate-secrets
 ### 🚪 Ingresar al pod de PostgreSQL
 
 ```bash
-kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- bash
+kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- bash -c "psql -U postgres -d myapp"
 ```
 
 ### Recrear, desplegar y ver logs

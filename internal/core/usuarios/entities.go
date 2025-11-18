@@ -16,8 +16,8 @@ type Usuario struct {
 	EstadoID           int       `json:"estado_id"`
 	RolNombre          string    `json:"rol"`
 	EstadoNombre       string    `json:"estado"`
-	FechaRegistro      time.Time `json:"creado_at"`
-	FechaActualizacion time.Time `json:"updated_at"`
+	FechaRegistro      time.Time `json:"fecha_registro"`
+	FechaActualizacion time.Time `json:"fecha_actualizacion"`
 }
 
 // UsuarioData contiene los datos para crear un nuevo usuario
@@ -42,11 +42,16 @@ type UsuarioDataXid struct {
 
 // UsuarioDataUpdate contiene los datos para actualizar un usuario
 type UsuarioDataUpdate struct {
-	Documento string  `json:"documento" binding:"required"`
-	Username  *string `json:"username,omitempty"`
-	Email     *string `json:"email,omitempty"`
-	RolID     *int    `json:"rol_id,omitempty"`
-	EstadoID  *int    `json:"estado_id,omitempty"`
+	Documento       string     `json:"documento" binding:"required"`
+	Username        *string    `json:"username,omitempty"`
+	Email           *string    `json:"email,omitempty"`
+	Nombres         *string    `json:"nombres,omitempty"`
+	Apellido        *string    `json:"apellido,omitempty"`
+	InfoPerfil      *string    `json:"info_perfil,omitempty"`
+	NumContacto     *string    `json:"num_contacto,omitempty"`
+	FechaNacimiento *time.Time `json:"fecha_nacimiento,omitempty"`
+	RolID           *int       `json:"rol_id,omitempty"`
+	EstadoID        *int       `json:"estado_id,omitempty"`
 }
 
 // CambiarPasswordData contiene los datos para cambiar contraseña

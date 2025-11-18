@@ -16,11 +16,16 @@ func ToUsuarioData(dto CreateUsuarioRequest) usuarios.UsuarioData {
 // ToUsuarioDataUpdate convierte DTO de update a entidad del core
 func ToUsuarioDataUpdate(dto UpdateUsuarioRequest) usuarios.UsuarioDataUpdate {
 	return usuarios.UsuarioDataUpdate{
-		Documento: dto.documento,
-		Username:  dto.Username,
-		Email:     dto.Email,
-		RolID:     dto.RolID,
-		EstadoID:  dto.EstadoID,
+		Documento:       dto.Documento,
+		Username:        dto.Username,
+		Email:           dto.Email,
+		Nombres:         dto.Nombres,
+		Apellido:        dto.Apellido,
+		InfoPerfil:      dto.InfoPerfil,
+		NumContacto:     dto.NumContacto,
+		FechaNacimiento: dto.FechaNacimiento,
+		RolID:           dto.RolID,
+		EstadoID:        dto.EstadoID,
 	}
 }
 
@@ -43,13 +48,13 @@ func ToCambiarPasswordData(dto CambiarPasswordRequest) usuarios.CambiarPasswordD
 // FromUsuario convierte entidad del core a DTO de response
 func FromUsuario(usuario *usuarios.Usuario) UsuarioResponse {
 	return UsuarioResponse{
+		Documento: usuario.Documento,
 		Usuario:   usuario.NombreCompleto,
 		Username:  usuario.Username,
 		Email:     usuario.Email,
 		Rol:       usuario.RolNombre,
 		Estado:    usuario.EstadoNombre,
 		CreadoAt:  usuario.FechaRegistro,
-		UpdatedAt: usuario.FechaActualizacion,
 	}
 }
 

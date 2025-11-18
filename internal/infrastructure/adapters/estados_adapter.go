@@ -242,15 +242,15 @@ func (a *EstadosAdapter) handleCreateError(err error, nombre string) error {
 	if strings.Contains(errStr, "duplicate") || strings.Contains(errStr, "Duplicate") {
 		validacion := utils.ValidarExistente("P2002", nombre)
 		if !validacion.OK {
-			return fmt.Errorf("status_cod:409, data:%s", validacion.Data)
+			return fmt.Errorf(validacion.Data)
 		}
 	}
 
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error creando el estado")
+	return fmt.Errorf("Ocurrió un error creando el estado")
 }
 
 func (a *EstadosAdapter) handleQueryError(err error, operation string) error {
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error %s", operation)
+	return fmt.Errorf("Ocurrió un error %s", operation)
 }
 
 func (a *EstadosAdapter) handleDeleteError(err error, id int) error {
@@ -258,10 +258,10 @@ func (a *EstadosAdapter) handleDeleteError(err error, id int) error {
 
 	// Error de referencia (foreign key constraint)
 	if strings.Contains(errStr, "foreign") || strings.Contains(errStr, "constraint") {
-		return fmt.Errorf("status_cod:400, data:No se puede eliminar el estado porque tiene registros asociados")
+		return fmt.Errorf("No se puede eliminar el estado porque tiene registros asociados")
 	}
 
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error eliminando el estado")
+	return fmt.Errorf("Ocurrió un error eliminando el estado")
 }
 
 func (a *EstadosAdapter) handleUpdateError(err error, nombre string) error {
@@ -275,5 +275,5 @@ func (a *EstadosAdapter) handleUpdateError(err error, nombre string) error {
 		}
 	}
 
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error actualizando el estado")
+	return fmt.Errorf("Ocurrió un error actualizando el estado")
 }

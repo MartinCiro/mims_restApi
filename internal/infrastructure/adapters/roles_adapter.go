@@ -64,12 +64,12 @@ func (a *RolesAdapter) CrearRol(ctx context.Context, rolData roles.RolData) (*ro
 		}
 		if err := tx.Create(&rolPermiso).Error; err != nil {
 			tx.Rollback()
-			return nil, fmt.Errorf("status_cod:400, data:Error asignando permisos")
+			return nil, fmt.Errorf("Error asignando permisos")
 		}
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("status_cod:400, data:Error al guardar los permisos del rol")
+		return nil, fmt.Errorf("Error al guardar los permisos del rol")
 	}
 
 	// Limpiar cache
@@ -242,7 +242,7 @@ func (a *RolesAdapter) ActualizarRol(ctx context.Context, rolData roles.RolDataU
 	}
 
 	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("status_cod:400, data:Error al actualizar el rol: %v", err)
+		return nil, fmt.Errorf("Error al actualizar el rol: %v", err)
 	}
 
 	// Limpiar cache
@@ -279,7 +279,7 @@ func (a *RolesAdapter) EliminarRol(ctx context.Context, rolData roles.RolDataXid
 	}
 
 	if countUsuarios > 0 {
-		return fmt.Errorf("status_cod:400, data:No se puede eliminar el rol porque tiene usuarios asociados")
+		return fmt.Errorf("No se puede eliminar el rol porque tiene usuarios asociados")
 	}
 
 	// Crear transacción
@@ -310,7 +310,7 @@ func (a *RolesAdapter) EliminarRol(ctx context.Context, rolData roles.RolDataXid
 
 	// Commit de la transacción
 	if err := tx.Commit().Error; err != nil {
-		return fmt.Errorf("status_cod:400, data:Error al eliminar el rol: %v", err)
+		return fmt.Errorf("Error al eliminar el rol: %v", err)
 	}
 
 	// Limpiar cache
@@ -405,7 +405,7 @@ func (a *RolesAdapter) obtenerPermisosIDs(ctx context.Context, permisosNombres [
 	}
 
 	if len(permisosNoEncontrados) > 0 {
-		return nil, fmt.Errorf("status_cod:400, data:Los siguientes permisos no existen: %s", strings.Join(permisosNoEncontrados, ", "))
+		return nil, fmt.Errorf("Los siguientes permisos no existen: %s", strings.Join(permisosNoEncontrados, ", "))
 	}
 
 	return permisosIDs, nil
@@ -452,15 +452,15 @@ func (a *RolesAdapter) handleCreateError(err error, nombre string) error {
 	if strings.Contains(errStr, "duplicate") || strings.Contains(errStr, "Duplicate") {
 		validacion := utils.ValidarExistente("P2002", nombre)
 		if !validacion.OK {
-			return fmt.Errorf("status_cod:409, data:%s", validacion.Data)
+			return fmt.Errorf(validacion.Data)
 		}
 	}
 
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error creando el rol")
+	return fmt.Errorf("Ocurrió un error creando el rol")
 }
 
 func (a *RolesAdapter) handleQueryError(err error, operation string) error {
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error %s", operation)
+	return fmt.Errorf("Ocurrió un error %s", operation)
 }
 
 func (a *RolesAdapter) handleUpdateError(err error, nombre string) error {
@@ -473,22 +473,22 @@ func (a *RolesAdapter) handleUpdateError(err error, nombre string) error {
 		}
 	}
 
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error actualizando el rol")
+	return fmt.Errorf("Ocurrió un error actualizando el rol")
 }
 
 func (a *RolesAdapter) handleDeleteError(err error, id int) error {
 	errStr := err.Error()
 
 	if strings.Contains(errStr, "foreign") || strings.Contains(errStr, "constraint") {
-		return fmt.Errorf("status_cod:400, data:No se puede eliminar el rol porque tiene registros asociados")
+		return fmt.Errorf("No se puede eliminar el rol porque tiene registros asociados")
 	}
 
-	return fmt.Errorf("status_cod:400, data:Ocurrió un error eliminando el rol")
+	return fmt.Errorf("Ocurrió un error eliminando el rol")
 }
 
 func (a *RolesAdapter) permisosIDs(ctx context.Context, permisosIDs []int) ([]int, error) {
 	if len(permisosIDs) == 0 {
-		return nil, fmt.Errorf("status_cod:400, data:Se requiere al menos un permiso")
+		return nil, fmt.Errorf("Se requiere al menos un permiso")
 	}
 
 	// Verificar que todos los IDs existen
@@ -502,7 +502,7 @@ func (a *RolesAdapter) permisosIDs(ctx context.Context, permisosIDs []int) ([]in
 	}
 
 	if int(count) != len(permisosIDs) {
-		return nil, fmt.Errorf("status_cod:400, data:Uno o más permisos no existen")
+		return nil, fmt.Errorf("Uno o más permisos no existen")
 	}
 
 	return permisosIDs, nil

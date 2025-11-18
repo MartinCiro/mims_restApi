@@ -108,10 +108,10 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 			http.HandlerFunc(authHandler.Register),
 		))
 
-	/* protected.Handle("PUT /api/usuarios/{id}",
-	authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionUsuariosEditar)(
-		http.HandlerFunc(usuariosHandler.ActualizarUsuario),
-	)) */
+	protected.Handle("PATCH /api/usuarios/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionUsuariosEditar)(
+			http.HandlerFunc(usuariosHandler.ActualizarUsuario),
+		))
 
 	// Rutas de Estados con permisos
 	protected.Handle("GET /api/estados",
@@ -129,7 +129,7 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 			http.HandlerFunc(estadosHandler.CrearEstado),
 		))
 
-	protected.Handle("PUT /api/estados/{id}",
+	protected.Handle("PATCH /api/estados/{id}",
 		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionEstadosEditar)(
 			http.HandlerFunc(estadosHandler.ActualizarEstado),
 		))
@@ -160,7 +160,7 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 			http.HandlerFunc(rolesHandler.CrearRol),
 		))
 
-	protected.Handle("PUT /api/roles/{id}",
+	protected.Handle("PATCH /api/roles/{id}",
 		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionRolesEditar)(
 			http.HandlerFunc(rolesHandler.ActualizarRol),
 		))

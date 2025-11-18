@@ -1,12 +1,14 @@
 package usuarios
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
 	coreUsuarios "api_go/internal/core/usuarios"
 	"api_go/internal/interfaces/api/common"
 	usuariosDTOs "api_go/internal/interfaces/api/usuarios"
+	"api_go/pkg/logger"
 	"api_go/pkg/utils"
 )
 
@@ -57,7 +59,8 @@ func (h *UsuariosHandler) ObtenerUsuarioXid(w http.ResponseWriter, r *http.Reque
 	common.WriteJSONResponse(w, response, 200)
 }
 
-/* func (h *UsuariosHandler) ActualizarUsuario(w http.ResponseWriter, r *http.Request) {
+func (h *UsuariosHandler) ActualizarUsuario(w http.ResponseWriter, r *http.Request) {
+	// Obtener ID desde la URL
 	idStr := r.PathValue("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
@@ -65,15 +68,18 @@ func (h *UsuariosHandler) ObtenerUsuarioXid(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	// Decodificar el request body
 	var req usuariosDTOs.UpdateUsuarioRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Info("Estructura recibida %d", json.NewDecoder(r.Body))
 		common.WriteSimpleError(w, "Solicitud inválida: formato JSON incorrecto", 400)
 		return
 	}
 
-	req.ID = id
+	// Asignar el ID obtenido de la URL al documento
+	req.Documento = strconv.Itoa(id) // Convertir a string si Documento es string
 
-	// ✅ VALIDAR DESPUÉS de asignar el ID
+	// ✅ VALIDAR DESPUÉS de asignar el documento
 	if errors := common.ValidateRequest(req); errors != nil {
 		common.WriteValidationErrors(w, errors, 400)
 		return
@@ -90,7 +96,7 @@ func (h *UsuariosHandler) ObtenerUsuarioXid(w http.ResponseWriter, r *http.Reque
 
 	successResponse := common.NewSuccessResponse("Se ha actualizado el usuario correctamente")
 	common.WriteJSONResponse(w, successResponse, 200)
-} */
+}
 
 func (h *UsuariosHandler) EliminarUsuario(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
