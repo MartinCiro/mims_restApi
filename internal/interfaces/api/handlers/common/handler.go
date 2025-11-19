@@ -16,7 +16,7 @@ func HealthHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := common.NewSuccessResponse(map[string]string{
-		"message": "Que onda Sir David",
+		"message": "Hello world",
 		"status":  "running",
 		"version": "1.0.0",
 	})

@@ -189,7 +189,6 @@ func (a *App) initializeServices() error {
 	a.AuthService = auth.NewAuthService(
 		authAdapter,
 		a.RedisCache,
-		a.JWTService,
 		a.CookieSigner,
 		a.PasswordService,
 		usuarioRepo,

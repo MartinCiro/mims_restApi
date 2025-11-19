@@ -22,10 +22,12 @@ type Config struct {
 	PortDB     string
 
 	// Auth
-	JWTSecret     string
-	JWTSalt       string
-	JWTExpireTime int
-	CookieSecret  string
+	JWTSecret        string
+	JWTSalt          string
+	JWTExpireTime    int
+	CookieSecret     string
+	SessionTTL       int
+	RefreshThreshold int
 
 	// Redis
 	RedisTTL      int
@@ -75,7 +77,9 @@ func Load() *Config {
 		JWTExpireTime: getEnvAsInt("JWT_TIEMPO_EXPIRA", 3600),
 
 		//
-		CookieSecret: getEnv("COOKIE_SECRET", "default-cookie-secret-key-32-chars-long-123"),
+		CookieSecret:     getEnv("COOKIE_SECRET", "default-cookie-secret-key-32-chars-long-123"),
+		SessionTTL:       getEnvAsInt("SESSION_TTL", 3600),
+		RefreshThreshold: getEnvAsInt("REFRESH_THRESHOLD", 300),
 
 		// Redis
 		RedisTTL:      getEnvAsInt("REDIS_TTL", 3600),

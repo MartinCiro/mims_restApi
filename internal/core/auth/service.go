@@ -11,7 +11,6 @@ import (
 
 	"api_go/config"
 	"api_go/internal/infrastructure/cookies"
-	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/infrastructure/redis"
 	"api_go/internal/interfaces/api/common"
 	"api_go/pkg/logger"
@@ -21,19 +20,18 @@ import (
 type AuthService struct {
 	authPort        AuthPort
 	redisService    *redis.Cache
-	jwtService      *jwt.JWTService
 	cookieSigner    *cookies.CookieSigner
 	passwordService *utils.PasswordService
 	userRepo        UserRepositoryPort
 	rolRepo         RolRepositoryPort
 	estadoRepo      EstadoRepositoryPort
 	config          *config.Config
+	refreshService  *RefreshService
 }
 
 func NewAuthService(
 	authPort AuthPort,
 	redisService *redis.Cache,
-	jwtService *jwt.JWTService,
 	cookieSigner *cookies.CookieSigner,
 	passwordService *utils.PasswordService,
 	userRepo UserRepositoryPort,
@@ -41,16 +39,28 @@ func NewAuthService(
 	estadoRepo EstadoRepositoryPort,
 	config *config.Config,
 ) *AuthService {
+
+	// Configurar tiempos de sesión
+	sessionTTL := time.Duration(config.SessionTTL) * time.Second
+	refreshThreshold := time.Duration(config.RefreshThreshold) * time.Second
+
+	refreshService := NewRefreshService(
+		redisService,
+		cookieSigner,
+		sessionTTL,
+		refreshThreshold,
+	)
+
 	return &AuthService{
 		authPort:        authPort,
 		redisService:    redisService,
-		jwtService:      jwtService,
 		cookieSigner:    cookieSigner,
 		passwordService: passwordService,
 		userRepo:        userRepo,
 		rolRepo:         rolRepo,
 		estadoRepo:      estadoRepo,
 		config:          config,
+		refreshService:  refreshService, // ← INYECTADO
 	}
 }
 
@@ -182,6 +192,28 @@ func (s *AuthService) LoginUser(ctx context.Context, req LoginRequest) (*AuthRes
 	signedCookie, err := s.cookieSigner.Sign(cookieData)
 	if err != nil {
 		return nil, "", time.Time{}, fmt.Errorf("error generando cookie de autenticación: %v", err)
+	}
+
+	// ✅ CREAR SESIÓN EN REDIS después del login exitoso
+	userIDInt, err := strconv.Atoi(usuarioRetrieved.ID)
+	if err != nil {
+		logger.Error("❌ Error convirtiendo userID a int para sesión",
+			"userID", usuarioRetrieved.ID,
+			"error", err)
+		// No retornar error, solo loggear para no afectar el login
+	} else {
+		err = s.CreateUserSession(ctx, userIDInt, usuarioRetrieved.Username, usuarioRetrieved.RolNombre, *usuarioRetrieved.IDRol)
+		if err != nil {
+			logger.Error("❌ Error creando sesión en Redis",
+				"userID", userIDInt,
+				"error", err)
+			// No retornar error, solo loggear para no afectar el login
+		} else {
+			logger.Info("✅ Sesión creada exitosamente en Redis",
+				"userID", userIDInt,
+				"username", usuarioRetrieved.Username,
+				"role", usuarioRetrieved.RolNombre)
+		}
 	}
 
 	eventExists, err := s.redisService.Get(ctx, eventKey)
@@ -393,13 +425,30 @@ func (s *AuthService) ValidateCookie(cookieValue string) (*User, error) {
 }
 
 func (s *AuthService) Logout(ctx context.Context, userID int) error {
+	// ✅ ELIMINAR SESIÓN DE REDIS PRIMERO
+	err := s.DeleteUserSession(ctx, userID)
+	if err != nil {
+		logger.Error("❌ Error eliminando sesión de Redis",
+			"userID", userID,
+			"error", err)
+		// Continuar con el logout aunque falle eliminar la sesión
+	} else {
+		logger.Info("✅ Sesión eliminada de Redis", "userID", userID)
+	}
+
+	// ✅ LIMPIAR CACHE DE USUARIO (código existente)
 	userCacheKey := fmt.Sprintf("user:%d", userID)
 	if s.redisService != nil {
-		err := s.redisService.Delete(ctx, userCacheKey)
+		err = s.redisService.Delete(ctx, userCacheKey)
 		if err != nil {
-			log.Printf("Error clearing user cache: %v", err)
+			logger.Error("Error clearing user cache:",
+				"userID", userID,
+				"error", err)
+		} else {
+			logger.Info("✅ Cache de usuario eliminado", "userID", userID)
 		}
 	}
+
 	return nil
 }
 
@@ -410,4 +459,44 @@ func (s *AuthService) hasPermission(permisos []string, permission string) bool {
 		}
 	}
 	return false
+}
+
+// CheckAndRefreshSession verifica y refresca la sesión si es necesario
+func (s *AuthService) CheckAndRefreshSession(ctx context.Context, userID int, username string, role string, roleID int, currentCookie string) (*RefreshResult, error) {
+	return s.refreshService.CheckAndRefresh(ctx, userID, username, role, roleID, currentCookie)
+}
+
+// CheckAndRefreshSessionFromCookie verifica y refresca directamente desde la cookie
+func (s *AuthService) CheckAndRefreshSessionFromCookie(ctx context.Context, currentCookie string) (*RefreshResult, error) {
+	return s.refreshService.CheckAndRefreshFromCookie(ctx, currentCookie)
+}
+
+// CreateUserSession crea una sesión para el usuario después del login
+func (s *AuthService) CreateUserSession(ctx context.Context, userID int, username string, role string, roleID int) error {
+	return s.refreshService.CreateSession(ctx, userID, username, role, roleID)
+}
+
+// UpdateUserSessionAccess actualiza el último acceso del usuario
+func (s *AuthService) UpdateUserSessionAccess(ctx context.Context, userID int) error {
+	return s.refreshService.UpdateSessionAccess(ctx, userID)
+}
+
+// GetSessionInfo obtiene información de la sesión actual
+func (s *AuthService) GetSessionInfo(ctx context.Context, userID int) (map[string]interface{}, error) {
+	return s.refreshService.GetSessionInfo(ctx, userID)
+}
+
+// ForceRefreshSession fuerza el refresh de una sesión
+func (s *AuthService) ForceRefreshSession(ctx context.Context, userID int, username string, role string, roleID int) (*RefreshResult, error) {
+	return s.refreshService.ForceRefresh(ctx, userID, username, role, roleID)
+}
+
+// DeleteUserSession elimina la sesión del usuario (para logout)
+func (s *AuthService) DeleteUserSession(ctx context.Context, userID int) error {
+	return s.refreshService.DeleteSession(ctx, userID)
+}
+
+// UserSessionExists verifica si el usuario tiene sesión activa
+func (s *AuthService) UserSessionExists(ctx context.Context, userID int) (bool, error) {
+	return s.refreshService.SessionExists(ctx, userID)
 }
