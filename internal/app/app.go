@@ -5,6 +5,7 @@ import (
 	"api_go/internal/core/auth"
 	"api_go/internal/core/estados"
 	"api_go/internal/core/login"
+	"api_go/internal/core/permisos"
 	"api_go/internal/core/roles"
 	"api_go/internal/core/usuarios"
 	"api_go/internal/infrastructure/adapters"
@@ -36,6 +37,7 @@ type App struct {
 	// Servicios del Core
 	AuthService    *auth.AuthService
 	EstadoService  *estados.EstadoService
+	PermisoService *permisos.PermisoService
 	RolService     *roles.RolService
 	UsuarioService *usuarios.UsuarioService
 
@@ -168,6 +170,10 @@ func (a *App) initializeServices() error {
 	// ✅ INICIALIZAR ESTADOS ADAPTER Y SERVICE
 	estadosAdapter := adapters.NewEstadosAdapter(a.DB, a.RedisCache)
 	a.EstadoService = estados.NewEstadoService(estadosAdapter)
+
+	// ✅ INICIALIZAR PERMISOS ADAPTER Y SERVICE
+	permisosAdapter := adapters.NewPermisosAdapter(a.DB, a.RedisCache)
+	a.PermisoService = permisos.NewPermisoService(permisosAdapter)
 
 	// ✅ INICIALIZAR ROLES ADAPTER Y SERVICE
 	rolesAdapter := adapters.NewRolesAdapter(a.DB, a.RedisCache)

@@ -9,6 +9,15 @@ var (
 	PermissionEstadosVer      = []string{"estado:ver", "estado:leer"}
 )
 
+// Permisos para Estados
+var (
+	PermissionPermisosListar   = []string{"permiso:listar", "permiso:leer"}
+	PermissionPermisosCrear    = []string{"permiso:escribir", "permiso:crear"}
+	PermissionPermisosEditar   = []string{"permiso:editar", "permiso:actualizar"}
+	PermissionPermisosEliminar = []string{"permiso:eliminar", "permiso:escribir"}
+	PermissionPermisosVer      = []string{"permiso:ver", "permiso:leer"}
+)
+
 // Permisos para Roles
 var (
 	PermissionRolesVer      = []string{"rol:ver", "rol:leer"}

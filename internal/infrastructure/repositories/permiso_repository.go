@@ -159,3 +159,38 @@ func (r *PermisoRepository) RemoverPermisoDeRol(ctx context.Context, rolID int, 
 	logger.Info("✅ Permiso removido del rol", "rolID", rolID, "permisoID", permisoID)
 	return nil
 }
+
+func (r *PermisoRepository) Update(ctx context.Context, permiso *models.Permiso) error {
+	logger.Info("🔍 Actualizando permiso", "ID", permiso.ID)
+	err := r.dbManager.GetDB().WithContext(ctx).
+		Save(permiso).Error
+
+	if err != nil {
+		logger.Error("❌ Error actualizando permiso", "error", err)
+		return fmt.Errorf("error actualizando permiso: %v", err)
+	}
+
+	logger.Info("✅ Permiso actualizado", "ID", permiso.ID)
+	return nil
+}
+
+// Delete elimina un permiso por ID
+func (r *PermisoRepository) Delete(ctx context.Context, id int) error {
+	logger.Info("🔍 Eliminando permiso", "ID", id)
+
+	result := r.dbManager.GetDB().WithContext(ctx).
+		Delete(&models.Permiso{}, id)
+
+	if result.Error != nil {
+		logger.Error("❌ Error eliminando permiso", "error", result.Error)
+		return fmt.Errorf("error eliminando permiso: %v", result.Error)
+	}
+
+	if result.RowsAffected == 0 {
+		logger.Error("❌ Permiso no encontrado para eliminar", "ID", id)
+		return fmt.Errorf("permiso no encontrado")
+	}
+
+	logger.Info("✅ Permiso eliminado", "ID", id)
+	return nil
+}

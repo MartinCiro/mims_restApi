@@ -11,6 +11,7 @@ import (
 	"api_go/internal/interfaces/api/handlers/auth"
 	common_handler "api_go/internal/interfaces/api/handlers/common"
 	"api_go/internal/interfaces/api/handlers/estados"
+	"api_go/internal/interfaces/api/handlers/permisos"
 	"api_go/internal/interfaces/api/handlers/roles"
 	"api_go/internal/interfaces/api/handlers/usuarios"
 	"api_go/internal/interfaces/api/middlewares"
@@ -72,6 +73,7 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 
 	// Inicializar handlers
 	estadosHandler := estados.NewEstadosHandler(app.EstadoService)
+	permisosHandler := permisos.NewPermisosHandler(app.PermisoService)
 	authHandler := auth.NewAuthHandler(app.AuthService)
 	profileHandler := auth.NewProfileHandler(app.AuthService)
 	rolesHandler := roles.NewRolesHandler(app.RolService)
@@ -137,6 +139,32 @@ func setupAllRoutes(mux *http.ServeMux, app *app.App) {
 	protected.Handle("DELETE /api/estados/{id}",
 		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionEstadosEliminar)(
 			http.HandlerFunc(estadosHandler.EliminarEstado),
+		))
+
+	// Rutas de permisos con auth
+	protected.Handle("GET /api/permisos",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionPermisosListar)(
+			http.HandlerFunc(permisosHandler.ObtenerPermisos),
+		))
+
+	protected.Handle("GET /api/permisos/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionPermisosVer)(
+			http.HandlerFunc(permisosHandler.ObtenerPermisoXid),
+		))
+
+	protected.Handle("POST /api/permisos",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionPermisosCrear)(
+			http.HandlerFunc(permisosHandler.CrearPermiso),
+		))
+
+	protected.Handle("PATCH /api/permisos/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionPermisosEditar)(
+			http.HandlerFunc(permisosHandler.ActualizarPermiso),
+		))
+
+	protected.Handle("DELETE /api/permisos/{id}",
+		authMiddleware.RequireAuthAndPermission(permsMiddleware, middlewares.PermissionPermisosEliminar)(
+			http.HandlerFunc(permisosHandler.EliminarPermiso),
 		))
 
 	// Rutas de Roles con permisos
