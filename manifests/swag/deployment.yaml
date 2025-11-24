@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: swag
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: swag
+  template:
+    metadata:
+      labels:
+        app: swag
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      containers:
+      - name: swag
+        image: linuxserver/swag:latest
+        command: ["/init"]
+        ports:
+        - containerPort: 443
+        - containerPort: 80
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "America/Lima"
+        - name: URL
+          value: "iyata.duckdns.org"
+        - name: SUBDOMAINS
+          value: ""  # ← Sin wildcard por ahora
+        - name: VALIDATION
+          value: "http"  # ← CAMBIAR a validación HTTP
+        - name: EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: swag-secrets
+              key: email
+        - name: STAGING
+          value: "true"
+        # Health checks con mayor tolerancia
+        livenessProbe:
+          tcpSocket:
+            port: 443
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          failureThreshold: 6
+        readinessProbe:
+          tcpSocket:
+            port: 443
+          initialDelaySeconds: 240
+          periodSeconds: 20
+          failureThreshold: 12
+        volumeMounts:
+        - name: swag-config
+          mountPath: /config
+        - name: proxy-configs 
+          mountPath: /config/nginx/proxy-confs
+      volumes:
+      - name: swag-config
+        persistentVolumeClaim:
+          claimName: swag-pvc
+      - name: proxy-configs
+        configMap:
+          name: swag-proxy-configs

@@ -49,3 +49,29 @@ spec:
           operator: In
           values:
           - localhost.localdomain
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: swag-prod-pv
+  labels:
+    type: local
+    app: swag
+spec:
+  capacity:
+    storage: 1Gi 
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain 
+  storageClassName: local-storage
+  local:
+    path: /mnt/k8s-storage/swag
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: kubernetes.io/hostname
+          operator: In
+          values:
+          - localhost.localdomain

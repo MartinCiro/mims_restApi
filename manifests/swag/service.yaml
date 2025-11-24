@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: swag-service
+  namespace: default
+  labels:
+    app: swag
+spec:
+  type: LoadBalancer
+  selector:
+    app: swag
+  ports:
+  - name: https
+    port: 443
+    targetPort: 443
+    protocol: TCP
+  - name: http
+    port: 80
+    targetPort: 80
+    protocol: TCP
+---
+# También un ClusterIP para comunicación interna
+apiVersion: v1
+kind: Service
+metadata:
+  name: swag-internal
+  namespace: default
+  labels:
+    app: swag
+spec:
+  type: ClusterIP
+  selector:
+    app: swag
+  ports:
+  - name: https
+    port: 443
+    targetPort: 443
+    protocol: TCP

@@ -277,6 +277,12 @@ kubectl get pods -w
 kubectl describe pod postgres-deployment-xxxxx
 ```
 
+### ⏳ Ingresar al pod
+
+```bash
+kubectl exec -it deployment/swag -- bash
+```
+
 ### 🗑️ Eliminar PVs
 
 ```bash

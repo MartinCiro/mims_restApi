@@ -67,6 +67,7 @@ get_secure_value_with_hash() {
     # Devolver SOLO valor y hash (sin mensajes)
     echo "$value|$hash"
 }
+
 echo ""
 echo "📝 Generating values from your configuration..."
 
@@ -86,6 +87,11 @@ REDIS_PASSWORD_HASH=$(echo "$REDIS_DATA" | cut -d'|' -f2)
 JWT_SALT_DATA=$(get_secure_value_with_hash "JWT_SALT" "JWT_SALT_ROUNDS" 32 "JWT Salt")
 JWT_SALT=$(echo "$JWT_SALT_DATA" | cut -d'|' -f1)
 JWT_SALT_HASH=$(echo "$JWT_SALT_DATA" | cut -d'|' -f2)
+
+# Obtener valores para SWAG
+DUCKDNS_TOKEN=$(get_secure_value "DUCKDNS_TOKEN" "DUCKDNS_TOKEN" 0 "DuckDNS Token")
+SWAG_EMAIL=$(get_secure_value "EMAIL" "SWAG_EMAIL" 0 "SWAG Email")
+SWAG_DOMAIN=$(get_secure_value "DOMINIO" "SWAG_DOMAIN" 0 "SWAG Domain")
 
 # Obtener otras configuraciones importantes
 USER_DB=$(get_secure_value "USER_DB" "DB_USER" 0 "Database User")
@@ -115,6 +121,10 @@ JWT_SECRET_HASH_B64=$(echo -n "$JWT_SECRET_HASH" | base64 | tr -d '\n')
 DB_PASSWORD_HASH_B64=$(echo -n "$DB_PASSWORD_HASH" | base64 | tr -d '\n')
 REDIS_PASSWORD_HASH_B64=$(echo -n "$REDIS_PASSWORD_HASH" | base64 | tr -d '\n')
 JWT_SALT_HASH_B64=$(echo -n "$JWT_SALT_HASH" | base64 | tr -d '\n')
+
+# Codificar secrets de SWAG a base64
+DUCKDNS_TOKEN_B64=$(echo -n "$DUCKDNS_TOKEN" | base64 | tr -d '\n')
+SWAG_EMAIL_B64=$(echo -n "$SWAG_EMAIL" | base64 | tr -d '\n')
 
 echo ""
 echo "📁 Creating secret files..."
@@ -161,6 +171,23 @@ data:
   postgres-password: $POSTGRES_PASSWORD_B64
 EOF
 
+# Crear secret de SWAG
+cat > manifests/swag/secret.yaml << EOF
+apiVersion: v1
+kind: Secret
+metadata:
+  name: swag-secrets
+  labels:
+    app: swag
+    generated-by: script
+    created: $(date -I)
+    source: env-file
+type: Opaque
+data:
+  duckdns-token: $DUCKDNS_TOKEN_B64
+  email: $SWAG_EMAIL_B64
+EOF
+
 echo ""
 echo "📄 Creating ConfigMap with your .env settings..."
 
@@ -199,6 +226,72 @@ data:
   # Application Settings
   LOG_LEVEL: "info"
   CORS_ALLOWED_ORIGINS: "*"
+EOF
+
+# Crear ConfigMap para SWAG
+cat > manifests/swag/configmap.yaml << EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: swag-proxy-configs
+  labels:
+    app: swag
+    generated-by: script
+data:
+  # Proxy para tu API Go
+  go-api.subdomain.conf: |
+    server {
+        listen 443 ssl;
+        listen [::]:443 ssl;
+        server_name api.$SWAG_DOMAIN.duckdns.org;
+        
+        include /config/nginx/ssl.conf;
+        
+        client_max_body_size 0;
+
+        # Forzar HTTP/1.1 para evitar problemas con HTTP/2
+        proxy_http_version 1.1;
+        
+        # Configuración específica para la raíz
+        location / {
+            proxy_pass http://go-api-service:4000/;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
+            proxy_set_header X-Forwarded-Host \$host;
+        }
+
+        # Health check para la API
+        location /health {
+            proxy_pass http://go-api-service:4000/health;
+            proxy_set_header Host \$host;
+        }
+    }
+  
+  
+  default.conf: |
+    server {
+        listen 443 ssl;
+        listen [::]:443 ssl;
+        server_name $SWAG_DOMAIN.duckdns.org;
+        
+        include /config/nginx/ssl.conf;
+        
+        # Redirige el dominio principal a www
+        return 301 https://www.$SWAG_DOMAIN.duckdns.org\$request_uri;
+    }
+    server {
+        listen 443 ssl default_server;
+        listen [::]:443 ssl default_server;
+        server_name _;
+        
+        include /config/nginx/ssl.conf;
+        
+        # Redirige cualquier subdominio no configurado a www
+        return 301 https://www.$SWAG_DOMAIN.duckdns.org\$request_uri;
+    }
+    include /config/nginx/proxy-confs/*.subdomain.conf;
 EOF
 
 echo ""
@@ -241,8 +334,14 @@ JWT_SALT:
   Length: ${#JWT_SALT} 
   Hash: $JWT_SALT_HASH
 
+## SWAG Configuration
+SWAG_DOMAIN: $SWAG_DOMAIN
+SWAG_EMAIL: $SWAG_EMAIL
+DUCKDNS_TOKEN:
+  Length: ${#DUCKDNS_TOKEN}
+
 ## Source Variables Used:
-$(env | grep -E "(ENV|PORT|DB_|REDIS_|JWT_)" | sed 's/^/  /')
+$(env | grep -E "(ENV|PORT|DB_|REDIS_|JWT_|DOMINIO|DUCKDNS|EMAIL)" | sed 's/^/  /')
 
 ## Verification Command:
 # To verify a secret in your app, compare the SHA256 hash:
@@ -252,14 +351,17 @@ EOF
 echo "✅ Secrets generation completed!"
 echo ""
 echo "📋 Summary:"
-echo "   ✅ manifests/shared/secrets.yaml (from your .env)"
-echo "   ✅ manifests/postgres/secret.yaml (from your .env)" 
-echo "   ✅ manifests/go-api/configmap.yaml (updated with .env settings)"
-echo "   ✅ manifests/shared/secrets-verification.txt (DO NOT COMMIT)"
+echo "   ✅ manifests/shared/secrets.yaml"
+echo "   ✅ manifests/postgres/secret.yaml" 
+echo "   ✅ manifests/swag/secret.yaml"
+echo "   ✅ manifests/swag/configmap.yaml"
+echo "   ✅ manifests/go-api/configmap.yaml"
+echo "   ✅ manifests/shared/secrets-verification.txt"
 echo ""
 echo "🔍 Your .env configuration has been converted to Kubernetes Secrets!"
 echo "   DB Password: ${#DB_PASSWORD} chars"
 echo "   Redis Password: ${#REDIS_PASSWORD} chars" 
 echo "   JWT Secret: ${#JWT_SECRET} chars"
+echo "   SWAG Domain: $SWAG_DOMAIN.duckdns.org"
 echo ""
 echo "🚀 To deploy: make deploy"
