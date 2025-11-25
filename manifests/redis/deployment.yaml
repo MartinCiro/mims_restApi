@@ -1,21 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: redis-deployment
+  name: redis-deployment-1
   labels:
     app: redis
     tier: cache
+    instance: "1"
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: redis
       tier: cache
+      instance: "1"
   template:
     metadata:
       labels:
         app: redis
         tier: cache
+        instance: "1"
     spec:
       containers:
       - name: redis
@@ -40,4 +43,4 @@ spec:
       volumes:
       - name: redis-data
         persistentVolumeClaim:
-          claimName: redis-pvc
+          claimName: redis-pvc-1

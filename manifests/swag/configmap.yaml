@@ -1,13 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: swag-proxy-configs
+  name: swag-proxy-configs-1
   labels:
     app: swag
     generated-by: script
+    instance: "1"
 data:
-
-  # VALIDACIÓN HTTP - NECESARIO PARA CERTIFICADOS REALES
   http-challenge.conf: |
     server {
         listen 80;
@@ -25,7 +24,8 @@ data:
             return 301 https://$host$request_uri;
         }
     }
-
+    
+  # Proxy para tu API Go
   go-api.subdomain.conf: |
     server {
         listen 443 ssl;
@@ -33,19 +33,22 @@ data:
         server_name api.iyata.duckdns.org;
         
         include /config/nginx/ssl.conf;
-
+        
         client_max_body_size 0;
+
+        # Forzar HTTP/1.1 para evitar problemas con HTTP/2
         proxy_http_version 1.1;
         
-        location = / {
+        # Configuración específica para la raíz
+        location / {
             proxy_pass http://go-api-service:4000/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
-            proxy_set_header X-Forwarded-Host $host;
         }
 
+        # Health check para la API
         location /health {
             proxy_pass http://go-api-service:4000/health;
             proxy_set_header Host $host;
@@ -62,24 +65,28 @@ data:
 
         return 301 https://iyata.duckdns.org$request_uri;
     }
-
+  
+  
   default.conf: |
     server {
         listen 443 ssl;
         listen [::]:443 ssl;
         server_name iyata.duckdns.org;
-
+        
         include /config/nginx/ssl.conf;
+        
+        # Redirige el dominio principal a www
         return 301 https://www.iyata.duckdns.org$request_uri;
     }
-
     server {
         listen 443 ssl default_server;
         listen [::]:443 ssl default_server;
         server_name _;
-
+        
         include /config/nginx/ssl.conf;
+        
+        # Redirige cualquier subdominio no configurado a www
         return 301 https://www.iyata.duckdns.org$request_uri;
     }
-
+    
     include /config/nginx/proxy-confs/*.subdomain.conf;

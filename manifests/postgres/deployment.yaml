@@ -1,22 +1,24 @@
-# manifests/postgres/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: postgres-deployment
+  name: postgres-deployment-1
   labels:
     app: postgres
     tier: database
+    instance: "1"
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: postgres
       tier: database
+      instance: "1"
   template:
     metadata:
       labels:
         app: postgres
         tier: database
+        instance: "1"
     spec:
       containers:
       - name: postgres
@@ -47,4 +49,4 @@ spec:
       volumes:
       - name: postgres-data
         persistentVolumeClaim:
-          claimName: postgres-pvc 
+          claimName: postgres-pvc-1

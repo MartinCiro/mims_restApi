@@ -1,14 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: swag-service
+  name: swag-service-1
   namespace: default
   labels:
     app: swag
+    instance: "1"
 spec:
   type: LoadBalancer
   selector:
     app: swag
+    instance: "1"
   ports:
   - name: https
     port: 443
@@ -23,14 +25,16 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: swag-internal
+  name: swag-internal-1
   namespace: default
   labels:
     app: swag
+    instance: "1"
 spec:
   type: ClusterIP
   selector:
     app: swag
+    instance: "1"
   ports:
   - name: https
     port: 443

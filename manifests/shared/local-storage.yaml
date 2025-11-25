@@ -1,20 +1,21 @@
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: postgres-prod-pv
+  name: postgres-prod-pv-1
   labels:
     type: local
     app: postgres
+    instance: "1"
 spec:
   capacity:
-    storage: 5Gi  # ← Coherente con tu PVC de 5Gi
+    storage: 5Gi
   volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain  # ← CRÍTICO para producción
+  persistentVolumeReclaimPolicy: Retain
   storageClassName: local-storage
   local:
-    path: /mnt/k8s-storage/postgres
+    path: /mnt/k8s-storage/instance-1/postgres
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -27,20 +28,21 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: redis-prod-pv
+  name: redis-prod-pv-1
   labels:
     type: local
     app: redis
+    instance: "1"
 spec:
   capacity:
-    storage: 1Gi 
+    storage: 1Gi
   volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain 
+  persistentVolumeReclaimPolicy: Retain
   storageClassName: local-storage
   local:
-    path: /mnt/k8s-storage/redis
+    path: /mnt/k8s-storage/instance-1/redis
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -53,20 +55,21 @@ spec:
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: swag-prod-pv
+  name: swag-prod-pv-1
   labels:
     type: local
     app: swag
+    instance: "1"
 spec:
   capacity:
-    storage: 1Gi 
+    storage: 1Gi
   volumeMode: Filesystem
   accessModes:
     - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Retain 
+  persistentVolumeReclaimPolicy: Retain
   storageClassName: local-storage
   local:
-    path: /mnt/k8s-storage/swag
+    path: /mnt/k8s-storage/instance-1/swag
   nodeAffinity:
     required:
       nodeSelectorTerms:

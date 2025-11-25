@@ -196,13 +196,14 @@ cat > manifests/go-api/configmap.yaml << EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: go-api-config
+  name: go-api-config-1
   labels:
     app: go-api
     source: env-file
+    instance: "1"
 data:
   # Application Configuration
-  APP_NAME: "SoftCalFut API"
+  APP_NAME: "Template API - Instance 1"
   APP_ENV: "$APP_ENV"
   APP_PORT: "$APP_PORT"
   
@@ -233,11 +234,30 @@ cat > manifests/swag/configmap.yaml << EOF
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: swag-proxy-configs
+  name: swag-proxy-configs-1
   labels:
     app: swag
     generated-by: script
+    instance: "1"
 data:
+  http-challenge.conf: |
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name $SWAG_DOMAIN.duckdns.org *.$SWAG_DOMAIN.duckdns.org;
+        
+        # Challenge de Let's Encrypt
+        location /.well-known/acme-challenge/ {
+            root /config/www;
+            try_files \$uri =404;
+        }
+        
+        # Todo lo demás redirige a HTTPS
+        location / {
+            return 301 https://\$host\$request_uri;
+        }
+    }
+    
   # Proxy para tu API Go
   go-api.subdomain.conf: |
     server {
@@ -259,7 +279,6 @@ data:
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto \$scheme;
-            proxy_set_header X-Forwarded-Host \$host;
         }
 
         # Health check para la API
@@ -267,6 +286,17 @@ data:
             proxy_pass http://go-api-service:4000/health;
             proxy_set_header Host \$host;
         }
+    }
+
+  www.subdomain.conf: |
+    server {
+        listen 443 ssl;
+        listen [::]:443 ssl;
+        server_name www.$SWAG_DOMAIN.duckdns.org;
+        
+        include /config/nginx/ssl.conf;
+
+        return 301 https://$SWAG_DOMAIN.duckdns.org\$request_uri;
     }
   
   
@@ -291,6 +321,7 @@ data:
         # Redirige cualquier subdominio no configurado a www
         return 301 https://www.$SWAG_DOMAIN.duckdns.org\$request_uri;
     }
+    
     include /config/nginx/proxy-confs/*.subdomain.conf;
 EOF
 

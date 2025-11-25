@@ -1,16 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: swag
+  name: swag-1
+  labels:
+    instance: "1"
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: swag
+      instance: "1"
   template:
     metadata:
       labels:
         app: swag
+        instance: "1"
     spec:
       dnsPolicy: ClusterFirstWithHostNet
       hostNetwork: true
@@ -20,7 +24,9 @@ spec:
         command: ["/init"]
         ports:
         - containerPort: 443
-        - containerPort: 80
+          hostPort: 443    # ← PUERTO ESTÁNDAR HTTPS
+        - containerPort: 80  
+          hostPort: 80     # ← PUERTO ESTÁNDAR HTTP
         env:
         - name: PUID
           value: "1000"
@@ -31,26 +37,25 @@ spec:
         - name: URL
           value: "iyata.duckdns.org"
         - name: SUBDOMAINS
-          value: ""  # ← Sin wildcard por ahora
+          value: "api,www"
         - name: VALIDATION
-          value: "http"  # ← CAMBIAR a validación HTTP
+          value: "http"
         - name: EMAIL
           valueFrom:
             secretKeyRef:
-              name: swag-secrets
+              name: swag-secrets-1
               key: email
         - name: STAGING
-          value: "false"
-        # Health checks con mayor tolerancia
+          value: "false"   # ← Usar certificados reales
         livenessProbe:
           tcpSocket:
-            port: 443
+            port: 443      # ← Probe en puerto 443
           initialDelaySeconds: 300
           periodSeconds: 30
           failureThreshold: 6
         readinessProbe:
           tcpSocket:
-            port: 443
+            port: 443      # ← Probe en puerto 443
           initialDelaySeconds: 240
           periodSeconds: 20
           failureThreshold: 12
@@ -62,7 +67,7 @@ spec:
       volumes:
       - name: swag-config
         persistentVolumeClaim:
-          claimName: swag-pvc
+          claimName: swag-pvc-1
       - name: proxy-configs
         configMap:
-          name: swag-proxy-configs
+          name: swag-proxy-configs-1
