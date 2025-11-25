@@ -6,6 +6,26 @@ metadata:
     app: swag
     generated-by: script
 data:
+
+  # VALIDACIÓN HTTP - NECESARIO PARA CERTIFICADOS REALES
+  http-challenge.conf: |
+    server {
+        listen 80;
+        listen [::]:80;
+        server_name iyata.duckdns.org *.iyata.duckdns.org;
+        
+        # Challenge de Let's Encrypt
+        location /.well-known/acme-challenge/ {
+            root /config/www;
+            try_files $uri =404;
+        }
+        
+        # Todo lo demás redirige a HTTPS
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
   go-api.subdomain.conf: |
     server {
         listen 443 ssl;
@@ -13,13 +33,10 @@ data:
         server_name api.iyata.duckdns.org;
         
         include /config/nginx/ssl.conf;
-        
+
         client_max_body_size 0;
-        
-        # Forzar HTTP/1.1 para evitar problemas con HTTP/2
         proxy_http_version 1.1;
         
-        # Configuración específica para la raíz
         location = / {
             proxy_pass http://go-api-service:4000/;
             proxy_set_header Host $host;
@@ -35,7 +52,6 @@ data:
         }
     }
 
-  # Frontend futuro (placeholder por ahora)
   www.subdomain.conf: |
     server {
         listen 443 ssl;
@@ -43,41 +59,27 @@ data:
         server_name www.iyata.duckdns.org;
         
         include /config/nginx/ssl.conf;
-        
-        # Por ahora, redirige al dominio principal
+
         return 301 https://iyata.duckdns.org$request_uri;
-        
-        # En el futuro, aquí irá el proxy al frontend:
-        # location / {
-        #     include /config/nginx/proxy.conf;
-        #     set $upstream_app frontend-service;
-        #     set $upstream_port 3000;
-        #     proxy_pass http://$upstream_app:$upstream_port;
-        # }
     }
 
-  # Configuración por defecto - Redirige todo a www
   default.conf: |
     server {
         listen 443 ssl;
         listen [::]:443 ssl;
         server_name iyata.duckdns.org;
-        
+
         include /config/nginx/ssl.conf;
-        
-        # Redirige el dominio principal a www
         return 301 https://www.iyata.duckdns.org$request_uri;
     }
 
-    # Catch-all para cualquier otro subdominio no configurado
     server {
         listen 443 ssl default_server;
         listen [::]:443 ssl default_server;
         server_name _;
-        
+
         include /config/nginx/ssl.conf;
-        
-        # Redirige cualquier subdominio no configurado a www
         return 301 https://www.iyata.duckdns.org$request_uri;
     }
+
     include /config/nginx/proxy-confs/*.subdomain.conf;

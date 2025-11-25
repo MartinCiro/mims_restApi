@@ -40,7 +40,7 @@ spec:
               name: swag-secrets
               key: email
         - name: STAGING
-          value: "true"
+          value: "false"
         # Health checks con mayor tolerancia
         livenessProbe:
           tcpSocket:
