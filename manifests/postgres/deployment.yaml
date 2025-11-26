@@ -20,6 +20,10 @@ spec:
         tier: database
         instance: "1"
     spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       containers:
       - name: postgres
         image: postgres:15-alpine
@@ -34,7 +38,7 @@ spec:
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: postgres-secret
+              name: postgres-secret-1
               key: postgres-password
         resources:
           requests:

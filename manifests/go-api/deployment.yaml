@@ -18,6 +18,10 @@ spec:
         tier: backend
         instance: "1"
     spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       containers:
       - name: go-api
         image: go-api:latest

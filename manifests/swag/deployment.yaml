@@ -16,8 +16,23 @@ spec:
         app: swag
         instance: "1"
     spec:
-      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
       hostNetwork: true
+      dnsPolicy: ClusterFirst 
+      dnsConfig: 
+        nameservers:
+          - "8.8.8.8"
+          - "1.1.1.1"
+        searches:
+          - default.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
+        options:
+          - name: ndots
+            value: "2"
       containers:
       - name: swag
         image: linuxserver/swag:latest

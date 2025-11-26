@@ -219,6 +219,12 @@ make generate-secrets
 kubectl exec -it $(kubectl get pod -l app=postgres -o name) -- bash -c "psql -U postgres -d myapp"
 ```
 
+### 🚪 Hacer reinicio instantaneo
+
+```bash
+kubectl delete pod -l app=swag,instance=1
+```
+
 ### Recrear, desplegar y ver logs
 
 ```bash
@@ -229,11 +235,11 @@ make build; docker save go-api:latest -o go-api.tar; sudo ctr -n k8s.io images i
 
 ```bash
 # Detener y limpiar
-kubectl scale deployment postgres-deployment --replicas=0
-kubectl scale deployment redis-deployment --replicas=0
-kubectl delete pvc postgres-pvc redis-pvc
-kubectl delete pv postgres-prod-pv redis-prod-pv
-sudo rm -rf /mnt/k8s-storage/postgres/* /mnt/k8s-storage/redis/*
+kubectl scale deployment postgres-deployment-1 --replicas=0
+kubectl scale deployment redis-deployment-1 --replicas=0
+kubectl delete pvc postgres-pvc-1 redis-pvc-1
+kubectl delete pv postgres-prod-pv-1 redis-prod-pv-1
+sudo rm -rf /mnt/k8s-storage/instance-1/postgres/* /mnt/k8s-storage/instance-1/redis/* /mnt/k8s-storage/instance-1/swag/*
 
 # Recrear
 kubectl apply -f manifests/shared/local-storage.yaml
@@ -241,8 +247,8 @@ kubectl apply -f manifests/shared/volumes.yaml
 
 # Esperar vinculación y reiniciar
 sleep 30
-kubectl scale deployment postgres-deployment --replicas=1
-kubectl scale deployment redis-deployment --replicas=1
+kubectl scale deployment postgres-deployment-1 --replicas=1
+kubectl scale deployment redis-deployment-1 --replicas=1
 ```
 
 ### 🗃️ Ver contenido del Secret llamado "app-secrets"
@@ -258,6 +264,8 @@ kubectl get svc
 ### ⚙️ Aplicar archivos de configuración
 ```bash
 kubectl apply -f manifests/go-api/configmap.yaml
+o
+kubectl apply -f manifests/ -R
 ```
 
 ### 🔄 Reiniciar cluster
@@ -297,7 +305,8 @@ kubectl logs -f go-api-deployment-xxxxx
 ### 🖥️ Monitorear y filtrar los pods que tengan la etiqueta app=go-api
 
 ```bash
-kubectl get pods -l app=go-api -w
+kubectl get pods -l app=go-api,instance=1 -w
+
 ```
 
 ## 📋 Cambiar el Método de Autenticación (Ejemplo Email)

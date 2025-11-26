@@ -134,7 +134,7 @@ cat > manifests/shared/secrets.yaml << EOF
 apiVersion: v1
 kind: Secret
 metadata:
-  name: app-secrets
+  name: app-secrets-1
   labels:
     app: go-api
     generated-by: script
@@ -160,7 +160,7 @@ cat > manifests/postgres/secret.yaml << EOF
 apiVersion: v1
 kind: Secret
 metadata:
-  name: postgres-secret
+  name: postgres-secret-1
   labels:
     app: postgres
     generated-by: script
@@ -176,7 +176,7 @@ cat > manifests/swag/secret.yaml << EOF
 apiVersion: v1
 kind: Secret
 metadata:
-  name: swag-secrets
+  name: swag-secrets-1
   labels:
     app: swag
     generated-by: script
@@ -274,7 +274,7 @@ data:
         
         # Configuración específica para la raíz
         location / {
-            proxy_pass http://go-api-service:4000/;
+            proxy_pass http://go-api-service-1:4000/;
             proxy_set_header Host \$host;
             proxy_set_header X-Real-IP \$remote_addr;
             proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -283,7 +283,7 @@ data:
 
         # Health check para la API
         location /health {
-            proxy_pass http://go-api-service:4000/health;
+            proxy_pass http://go-api-service-1:4000/health;
             proxy_set_header Host \$host;
         }
     }

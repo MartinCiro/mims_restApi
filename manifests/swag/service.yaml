@@ -1,42 +1,86 @@
-apiVersion: v1
-kind: Service
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: swag-service-1
-  namespace: default
+  name: swag-1
   labels:
-    app: swag
     instance: "1"
 spec:
-  type: LoadBalancer
+  replicas: 1
   selector:
-    app: swag
-    instance: "1"
-  ports:
-  - name: https
-    port: 443
-    targetPort: 443
-    protocol: TCP
-  - name: http
-    port: 80
-    targetPort: 80
-    protocol: TCP
----
-# También un ClusterIP para comunicación interna
-apiVersion: v1
-kind: Service
-metadata:
-  name: swag-internal-1
-  namespace: default
-  labels:
-    app: swag
-    instance: "1"
-spec:
-  type: ClusterIP
-  selector:
-    app: swag
-    instance: "1"
-  ports:
-  - name: https
-    port: 443
-    targetPort: 443
-    protocol: TCP
+    matchLabels:
+      app: swag
+      instance: "1"
+  template:
+    metadata:
+      labels:
+        app: swag
+        instance: "1"
+    spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers:
+          - "8.8.8.8"
+          - "1.1.1.1"
+        searches:
+          - default.svc.cluster.local
+          - svc.cluster.local
+          - cluster.local
+        options:
+          - name: ndots
+            value: "2"
+      containers:
+      - name: swag
+        image: linuxserver/swag:latest
+        command: ["/init"]
+        ports:
+        - containerPort: 443  # ← SIN hostPort
+        - containerPort: 80   # ← SIN hostPort
+        env:
+        - name: PUID
+          value: "1000"
+        - name: PGID
+          value: "1000"
+        - name: TZ
+          value: "America/Lima"
+        - name: URL
+          value: "iyata.duckdns.org"
+        - name: SUBDOMAINS
+          value: "api,www"
+        - name: VALIDATION
+          value: "http"
+        - name: EMAIL
+          valueFrom:
+            secretKeyRef:
+              name: swag-secrets-1
+              key: email
+        - name: STAGING
+          value: "false"
+        livenessProbe:
+          tcpSocket:
+            port: 443
+          initialDelaySeconds: 300
+          periodSeconds: 30
+          failureThreshold: 6
+        readinessProbe:
+          tcpSocket:
+            port: 443
+          initialDelaySeconds: 240
+          periodSeconds: 20
+          failureThreshold: 12
+        volumeMounts:
+        - name: swag-config
+          mountPath: /config
+        - name: proxy-configs 
+          mountPath: /config/nginx/proxy-confs
+      volumes:
+      - name: swag-config
+        persistentVolumeClaim:
+          claimName: swag-pvc-1
+      - name: proxy-configs
+        configMap:
+          name: swag-proxy-configs-1
+          defaultMode: 0644
