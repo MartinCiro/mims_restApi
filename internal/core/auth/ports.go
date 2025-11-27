@@ -18,10 +18,14 @@ type UserRepositoryPort interface {
 type RolRepositoryPort interface {
 	FindRolIDByName(ctx context.Context, nombre string) (int, error)
 	FindByID(ctx context.Context, id int) (*models.Rol, error)
+	FindByExactName(ctx context.Context, nombre string) (*models.Rol, error)
+	FindOrCreateGuest(ctx context.Context) (int, error)
 }
 
 type EstadoRepositoryPort interface {
 	FindEstadoIDByName(ctx context.Context, nombre string) (int, error)
+	FindByExactName(ctx context.Context, nombre string) (*models.Estado, error)
+	FindOrCreateActive(ctx context.Context) (int, error)
 }
 
 type AuthData struct {

@@ -114,7 +114,6 @@ func (r *UsuarioRepository) FindByID(ctx context.Context, userID int) (*auth.Use
 }
 
 // CreateUser crea un nuevo usuario
-// CreateUser crea un nuevo usuario (versión alternativa)
 func (r *UsuarioRepository) CreateUser(ctx context.Context, usuario *auth.Usuario, email string) (int, error) {
 	// Generar documento único
 	documento := int(time.Now().UnixNano() / 1000000)

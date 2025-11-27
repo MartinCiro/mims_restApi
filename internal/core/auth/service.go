@@ -314,7 +314,6 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 		}
 
 		if req.RolId != nil {
-			// CORRECCIÓN: Obtener el objeto Rol y luego extraer el nombre
 			rol, err := s.rolRepo.FindByID(ctx, *req.RolId)
 			if err != nil {
 				return nil, "", time.Time{}, fmt.Errorf("error buscando rol por ID: %v", err)
@@ -322,7 +321,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 			if rol == nil {
 				return nil, "", time.Time{}, fmt.Errorf("rol con ID %d no encontrado", *req.RolId)
 			}
-			rolNombre = rol.NombreRol // Asumiento que el campo se llama NombreRol
+			rolNombre = rol.NombreRol
 		} else {
 			rolNombre = "usuario"
 		}
@@ -330,20 +329,31 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 		rolNombre = "invitado"
 	}
 
-	rolID, err := s.rolRepo.FindRolIDByName(ctx, rolNombre)
-	if err != nil {
-		return nil, "", time.Time{}, fmt.Errorf("error buscando rol '%s': %v", rolNombre, err)
-	}
-	if rolID == 0 {
-		return nil, "", time.Time{}, fmt.Errorf("rol '%s' no encontrado", rolNombre)
+	// LÓGICA SIMPLIFICADA: Usar FindOrCreateGuest para invitado, FindByExactName para otros
+	var rolID int
+	var err error
+
+	if rolNombre == "invitado" {
+		rolID, err = s.rolRepo.FindOrCreateGuest(ctx)
+	} else {
+		rol, err := s.rolRepo.FindByExactName(ctx, rolNombre)
+		if err != nil {
+			return nil, "", time.Time{}, fmt.Errorf("error buscando rol '%s': %v", rolNombre, err)
+		}
+		if rol == nil {
+			return nil, "", time.Time{}, fmt.Errorf("rol '%s' no encontrado", rolNombre)
+		}
+		rolID = rol.ID
 	}
 
-	estadoID, err := s.estadoRepo.FindEstadoIDByName(ctx, estadoNombre)
 	if err != nil {
-		return nil, "", time.Time{}, fmt.Errorf("error buscando estado '%s': %v", estadoNombre, err)
+		return nil, "", time.Time{}, fmt.Errorf("error procesando rol '%s': %v", rolNombre, err)
 	}
-	if estadoID == 0 {
-		return nil, "", time.Time{}, fmt.Errorf("estado '%s' no encontrado", estadoNombre)
+
+	// LÓGICA PARA ESTADO
+	estadoID, err := s.estadoRepo.FindOrCreateActive(ctx)
+	if err != nil {
+		return nil, "", time.Time{}, fmt.Errorf("error buscando/creando estado '%s': %v", estadoNombre, err)
 	}
 
 	newUser, err := NewUsuario(req.Username, req.Password, &rolID, &estadoID)
@@ -380,9 +390,8 @@ func (s *AuthService) RegisterUser(ctx context.Context, req RegisterRequest, cur
 		return nil, "", time.Time{}, fmt.Errorf("error generando cookie de autenticación: %v", err)
 	}
 
-	// CAMBIO AQUÍ: Retornar diferentes estructuras según el caso
+	// Retornar mensaje según el contexto
 	if currentUser != nil {
-		// Retornar solo el string para "Usuario creado correctamente"
 		return "Usuario creado correctamente", signedCookie, cookieData.ExpiresAt, nil
 	} else {
 		return "Usuario registrado con exito", signedCookie, cookieData.ExpiresAt, nil
