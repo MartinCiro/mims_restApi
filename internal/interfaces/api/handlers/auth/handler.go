@@ -115,14 +115,15 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	if currentUser != nil {
 		responseData = authResponse
 	} else {
-		if authResp, ok := authResponse.(*auth.AuthResponse); ok {
-			responseData = map[string]interface{}{
-				"Message": authResp.Message,
-			}
-		} else {
-			responseData = map[string]interface{}{
-				"Message": "Usuario registrado con exito",
-			}
+		// Para usuarios no autenticados (registro normal)
+		// Extraer el mensaje directamente
+		switch v := authResponse.(type) {
+		case *auth.AuthResponse:
+			responseData = v.Message
+		case string:
+			responseData = v
+		default:
+			responseData = "Usuario registrado con exito"
 		}
 	}
 
