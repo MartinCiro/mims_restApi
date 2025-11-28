@@ -309,6 +309,83 @@ kubectl get pods -l app=go-api,instance=1 -w
 
 ```
 
+## Insertar datos base
+Es necesario ingresar al pod y ejecutar las siguientes sentencias psql
+```psql
+-- Iniciar una transacción para asegurar la consistencia
+BEGIN;
+
+-- 1. Insertar el rol de administrador
+INSERT INTO roles (nombre_rol, descripcion) 
+VALUES ('admin', 'Rol de administrador con todos los permisos del sistema');
+
+-- Obtener el ID del rol admin recién insertado
+DO $$ 
+DECLARE 
+    admin_id BIGINT;
+BEGIN
+    SELECT id INTO admin_id FROM roles WHERE nombre_rol = 'admin';
+    
+    -- 2. Insertar solo los permisos base (sin sinónimos)
+    -- Permisos para Estados
+    INSERT INTO permisos (nombre_permiso, descripcion) VALUES
+    ('estado:listar', 'Permiso para listar estados'),
+    ('estado:leer', 'Permiso para leer estados'),
+    ('estado:crear', 'Permiso para crear estados'),
+    ('estado:editar', 'Permiso para editar estados'),
+    ('estado:eliminar', 'Permiso para eliminar estados'),
+    ('estado:ver', 'Permiso para ver estados'),
+    
+    -- Permisos para Permisos
+    ('permiso:listar', 'Permiso para listar permisos'),
+    ('permiso:leer', 'Permiso para leer permisos'),
+    ('permiso:crear', 'Permiso para crear permisos'),
+    ('permiso:editar', 'Permiso para editar permisos'),
+    ('permiso:eliminar', 'Permiso para eliminar permisos'),
+    ('permiso:ver', 'Permiso para ver permisos'),
+    
+    -- Permisos para Roles
+    ('rol:ver', 'Permiso para ver roles'),
+    ('rol:listar', 'Permiso para listar roles'),
+    ('rol:crear', 'Permiso para crear roles'),
+    ('rol:eliminar', 'Permiso para eliminar roles'),
+    ('rol:editar', 'Permiso para editar roles'),
+    ('rol:permisos', 'Permiso para gestionar permisos de roles'),
+    
+    -- Permisos para Usuarios
+    ('usuario:listar', 'Permiso para listar usuarios'),
+    ('usuario:crear', 'Permiso para crear usuarios'),
+    ('usuario:editar', 'Permiso para editar usuarios'),
+    ('usuario:listar_xid', 'Permiso para listar usuarios por ID'),
+    
+    -- Permisos para login
+    ('login:logout', 'Permiso para hacer logout'),
+    
+    -- Permisos administrativos
+    ('admin', 'Permiso de administrador')
+    ON CONFLICT (nombre_permiso) DO NOTHING;
+    
+    -- 3. Asignar TODOS los permisos al rol admin
+    INSERT INTO rol_x_permisos (id_rol, id_permiso)
+    SELECT admin_id, id
+    FROM permisos
+    ON CONFLICT (id_rol, id_permiso) DO NOTHING;
+    
+END $$;
+
+-- Confirmar la transacción
+COMMIT;
+
+-- Verificar que todo se insertó correctamente
+SELECT r.nombre_rol, p.nombre_permiso, p.descripcion
+FROM roles r
+JOIN rol_x_permisos rp ON r.id = rp.id_rol
+JOIN permisos p ON rp.id_permiso = p.id
+WHERE r.nombre_rol = 'admin'
+ORDER BY p.nombre_permiso;
+```
+
+
 ## 📋 Cambiar el Método de Autenticación (Ejemplo Email)
 
 ### **Archivos a Modificar**
