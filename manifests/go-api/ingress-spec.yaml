@@ -1,0 +1,12 @@
+ingressClassName: traefik
+rules:
+  - host: api.iyata.duckdns.org
+    http:
+      paths:
+        - backend:
+            service:
+              name: go-api-service-1
+              port:
+                number: 4000
+          path: /
+          pathType: Prefix

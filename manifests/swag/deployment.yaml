@@ -20,19 +20,25 @@ spec:
       - key: "node-role.kubernetes.io/control-plane"
         operator: "Exists"
         effect: "NoSchedule"
-      hostNetwork: true
-      dnsPolicy: ClusterFirst 
-      dnsConfig: 
+      # hostNetwork: true
+      spec:
+      dnsPolicy: "None"
+      dnsConfig:
         nameservers:
-          - "8.8.8.8"
-          - "1.1.1.1"
+          - "10.96.0.10"  # IP del servicio kube-dns
         searches:
-          - default.svc.cluster.local
-          - svc.cluster.local
-          - cluster.local
+          - "default.svc.cluster.local"
+          - "svc.cluster.local" 
+          - "cluster.local"
+          - "openstacklocal"  # Mantener el search domain del host
+          - "vps.ovh.ca"
         options:
           - name: ndots
             value: "2"
+          - name: attempts
+            value: "3"
+          - name: timeout
+            value: "1"
       containers:
       - name: swag
         image: linuxserver/swag:latest
@@ -79,6 +85,7 @@ spec:
           mountPath: /config
         - name: proxy-configs 
           mountPath: /config/nginx/proxy-confs
+          eadOnly: false 
       volumes:
       - name: swag-config
         persistentVolumeClaim:

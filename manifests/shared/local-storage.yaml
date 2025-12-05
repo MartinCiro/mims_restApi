@@ -23,7 +23,7 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - localhost.localdomain
+          - vps-dc33a175.vps.ovh.ca
 ---
 apiVersion: v1
 kind: PersistentVolume
@@ -50,15 +50,15 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - localhost.localdomain
+          - vps-dc33a175.vps.ovh.ca
 ---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
-  name: swag-prod-pv-1
+  name: traefik-pv-1
   labels:
     type: local
-    app: swag
+    app: traefik
     instance: "1"
 spec:
   capacity:
@@ -69,7 +69,7 @@ spec:
   persistentVolumeReclaimPolicy: Retain
   storageClassName: local-storage
   local:
-    path: /mnt/k8s-storage/instance-1/swag
+    path: /mnt/k8s-storage/instance-1/traefik
   nodeAffinity:
     required:
       nodeSelectorTerms:
@@ -77,4 +77,4 @@ spec:
         - key: kubernetes.io/hostname
           operator: In
           values:
-          - localhost.localdomain
+          - vps-dc33a175.vps.ovh.ca

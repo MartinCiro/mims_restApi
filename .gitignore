@@ -20,4 +20,5 @@ coverage
 .vscode
 .idea
 .env_*
-nul
+null
+front

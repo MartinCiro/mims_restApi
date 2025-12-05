@@ -1,0 +1,1752 @@
+    1  nb
+    2  sb
+    3  cb
+    4  nh
+    5  sh
+    6  ch
+    7  q # Salir
+    8  dc # Ver contenedores
+    9  dUp # Crear compose
+   10  gc # Clonar
+   11  cdm # Carpeta git
+   12  screen -S NOM -d -m comando
+   13  screen -r NOM # ctrl + a -> d (ingresar sin detener el proceso)
+   14  sudo reboot
+   15  kubectl logs -n kube-system -l k8s-app=cilium --tail=10
+   16  curl http://localhost:8080/api/http/routers
+   17  kubectl delete ingress go-api-http
+   18  cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: api.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+EOF
+
+   19  curl -v -H "Host: api.iyata.duckdns.org" http://149.56.131.106
+   20  kubectl rollout restart deployment/traefik -n traefik
+   21  sleep 47
+   22  curl -v -H "Host: api.iyata.duckdns.org" http://149.56.131.106
+   23  kubectl exec -it go-api-deployment-1-6f7c6cd798-xw2mz -- sh -c "curl -s http://localhost:4000/health || echo 'No response'"
+   24  kubectl exec -it go-api-deployment-1-6f7c6cd798-xw2mz -- sh -c "wget -q -O - http://localhost:4000/health || echo 'No response'"
+   25  curl -s http://localhost:8080/api/http/routers | python3 -m json.tool | grep -A5 -B5 "api.iyata"
+   26  kubectl get ingressroutetraefik -A
+   27  kubectl get crd | grep traefik
+   28  kubectl get ingressroutes.traefik.containo.us -A
+   29  kubectl delete ingressroutes.traefik.containo.us go-api-ingress
+   30  sleep 5 && curl -v -H "Host: api.iyata.duckdns.org" http://149.56.131.106
+   31  curl -s http://localhost:8080/api/http/routers | python3 -m json.tool | grep -i "api.iyata"
+   32  kubectl rollout restart deployment -n traefik traefik
+   33  sleep 47
+   34  curl -s http://localhost:8080/api/http/routers | python3 -m json.tool | grep -i "api.iyata"
+   35  kubectl edit deployment -n traefik traefik
+   36  kubectl rollout restart deployment -n traefik traefik
+   37  sleep 47
+   38  kubectl get pods -n traefik -w
+   39  kubectl logs -n traefik -l app=traefik --tail=10
+   40  sleep 30 && curl -v -H "Host: api.iyata.duckdns.org" http://149.56.131.106
+   41  curl -s http://localhost:8080/api/http/routers
+   42  curl -s http://localhost:8082/api/http/routers
+   43  curl -s http://localhost:8081/api/http/routers
+   44  kubectl logs -n traefik -l app=traefik --tail=5 | grep -i provider
+   45  kubectl logs -n traefik -l app=traefik | grep -i "Configuration loaded" | tail -1
+   46  kubectl port-forward -n traefik svc/traefik 8089:8080 2>/dev/null &
+   47  sleep 3
+   48  curl -s http://localhost:8089/api/http/routers | python3 -m json.tool | grep -A2 -B2 "provider"
+   49  kubectl get pod -n traefik -l app=traefik -o yaml | grep -A5 "args:"
+   50  kubectl patch deployment -n traefik traefik -p '{"spec":{"template":{"spec":{"containers":[{"name":"traefik","args":["--api.dashboard=true","--api.insecure=true","--providers.kubernetescrd","--providers.kubernetesingress","--entrypoints.web.address=0.0.0.0:80","--entrypoints.web.http2.maxconcurrentstreams=100","--entrypoints.websecure.address=0.0.0.0:443","--certificatesresolvers.letsencrypt.acme.email=martinciro11@gmail.com","--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json","--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"]}]}}}}'
+   51  kubectl rollout restart deployment -n traefik traefik
+   52  kubectl get pods -n traefik -w
+   53  kubectl delete pod traefik-7dfbfb7ddc-qbzqj -n traefik 
+   54  kubectl get pods -n traefik -w
+   55  curl -s http://localhost:8089/api/http/routers | python3 -m json.tool | grep -A2 -B2 "provider"
+   56  curl -v -H "Host: api.iyata.duckdns.org" http://149.56.131.106/health
+   57  curl "https://www.duckdns.org/update?domains=iyata,api.iyata&token=1cfb6881-33ac-4c48-a8b2-2a46f73779e8&ip=149.56.131.106&clear=true&verbose=true"   
+   58  curl "https://www.duckdns.org/update?domains=iyata&token=1cfb6881-33ac-4c48-a8b2-2a46f73779e8&ip=149.56.131.106&clear=true&verbose=true"   
+   59  nslookup api.iyata.duckdns.org
+   60  curl -v -H "Host: api.iyata.duckdns.org" http://149.56.131.106/health
+   61  nslookup api.iyata.duckdns.org 1.1.1.1
+   62  nslookup api.iyata.duckdns.org 8.8.8.8
+   63  # Quad9 DNS
+   64  nslookup api.iyata.duckdns.org 9.9.9.9
+   65  curl "https://www.duckdns.org/update?domains=iyata&token=1cfb6881-33ac-4c48-a8b2-2a46f73779e8&ip=149.56.131.106&&ipv6=2607:5300:205:200::83ff&verbose=true"
+   66  nslookup api.iyata.duckdns.org 1.1.1.1
+   67  kubectl get deployment -n traefik traefik -o yaml | grep -A5 "certificatesresolvers"
+   68  cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api-ingress-tls
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: api.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+  tls:
+  - hosts:
+    - api.iyata.duckdns.org
+    secretName: api-iyata-tls
+EOF
+
+   69  kubectl delete ingress go-api-ingress
+   70  kubectl get pods -n traefik -w
+   71  kubectl logs -n traefik -l app=traefik --tail=10 -f
+   72  clear
+   73  kubectl get pods -n traefik -w
+   74  kubectl delete pod traefik-7d94dd58d7-wjbc6 -n traefik
+   75  kubectl logs -n traefik -l app=traefik --tail=10 -f
+   76  clear
+   77  kubectl get deployment -n traefik traefik -o yaml | grep -A15 "args:"
+   78  kubectl rollout restart deployment -n traefik traefik
+   79  kubectl get pods -n traefik -w
+   80  kubectl delete pod traefik-7d94dd58d7-fjbmx -n traefik
+   81  kubectl get pods -n traefik -w
+   82  clear
+   83  kubectl logs -n traefik -l app=traefik --tail=10 -f
+   84  kubectl delete ingress go-api-ingress-tls
+   85  cat <<EOF | kubectl apply -f -
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api-ingress-tls
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: api.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+EOF
+
+   86  kubectl rollout restart deployment -n traefik traefik
+   87  kubectl get pods -n traefik -w
+   88  kubectl delete pod traefik-597bd7668c-tcckg -n traefik
+   89  kubectl get pods -n traefik -w
+   90  clear
+   91  kubectl logs -n traefik -l app=traefik --tail=20 -f
+   92  kubectl port-forward -n traefik svc/traefik 8090:8080 2>/dev/null &
+   93  sleep 3
+   94  curl -s http://localhost:8090/api/http/routers | python3 -m json.tool | grep -A5 -B5 "api.iyata"
+   95  curl -vk https://api.iyata.duckdns.org/health
+   96  clear
+   97  kubectl logs -n traefik -l app=traefik | grep -i "letsencrypt\|acme\|certificate" | tail -20
+   98  clear
+   99  nslookup api.iyata.duckdns.org 1.1.1.1
+  100  nslookup api.iyata.duckdns.org 8.8.8.8
+  101  curl -vk https://api.iyata.duckdns.org/health 2>&1 | grep -i "server certificate\|SSL certificate"
+  102  kubectl logs -n traefik -l app=traefik --tail=30 | grep -i "letsencrypt\|acme\|Unable to obtain"
+  103  # Lista certificados
+  104  kubectl get certificaterequests.cert-manager.io -A
+  105  kubectl get certificates.cert-manager.io -A
+  106  # Describe el certificado problemático
+  107  kubectl describe certificaterequest -n traefik
+  108  kubectl logs -n traefik -l app=traefik --tail=30 | grep -i "letsencrypt\|acme\|Unable to obtain"
+  109  history > a.txt
+    1  nb
+    2  sb
+    3  cb
+    4  nh
+    5  sh
+    6  ch
+    7  q # Salir
+    8  dc # Ver contenedores
+    9  dUp # Crear compose
+   10  gc # Clonar
+   11  cdm # Carpeta git
+   12  screen -S NOM -d -m comando
+   13  screen -r NOM # ctrl + a -> d (ingresar sin detener el proceso)
+   14  sudo reboot
+   15  kubectl logs -n kube-system -l k8s-app=cilium --tail=10
+   16  curl http://181.51.154.81:30080 --connect-timeout 5
+   17  kubectl run test-internal --image=curlimages/curl --rm -it --restart=Never -- curl -v http://go-api-service-1:4000
+   18  kubectl run --rm tesst-internal --image=curlimages/curl --rm -it --restart=Never -- curl -v http://go-api-service-1:4000
+   19  kubectl get pods -w
+   20  kubectl exec -it go-api-deployment-1-6f7c6cd798-xw2mz -- curl -v http://go-api-service-1:4000
+   21  kubectl exec -it redis-deployment-1-6746cf8b44-tfxv -- curl -v http://go-api-service-1:4000
+   22  kubectl exec -it redis-deployment-1-6746cf8b44-tfx7 -- curl -v http://go-api-service-1:4000
+   23  kubectl exec -it redis-deployment-1-6746cf8b44-tfxv7 -- curl -v http://go-api-service-1:4000
+   24  kubectl exec -it redis-deployment-1-6746cf8b44-tfxv7 -- apk add curl
+   25  clear
+   26  kubectl apply -f manifests/go-api/
+   27  kubectl get ingress -o wide
+   28  kubectl delete ingress go-api-http
+   29  curl -v http://api.iyata.duckdns.org --connect-timeout 10
+   30  kubectl describe ingress go-api-ingress
+   31  kubectl delete ingress go-api-ingress
+   32  kubectl create ingress go-api-http --class=traefik --rule="api.iyata.duckdns.org/=go-api-service-1:4000" --annotation="traefik.ingress.kubernetes.io/router.entrypoints=web"
+   33  curl -v -H "Host: api.iyata.duckdns.org" http://181.51.154.81
+   34  kubectl get deployment -n traefik traefik -o yaml | grep -A10 "args:"
+   35  ip addr show ens3
+   36  curl -v -H "Host: api.iyata.duckdns.org" http://149.56.131.106
+   37  curl -v -H "Host: api.iyata.duckdns.org" http://149.56.131.106/health
+   38  clear
+   39  kubectl logs -n traefik -l app=traefik --tail=20 | grep -i "api.iyata"
+   40  kubectl logs -n traefik -l app=traefik --tail=30
+   41  clear
+   42  kubectl get ingressclasses
+   43  kubectl port-forward -n traefik svc/traefik 8080:8080
+   44  kubectl port-forward -n traefik svc/traefik 8081:8080
+   45  kubectl get pods -n traefik -w
+   46  kubectl delete pod traefik-7dfbfb7ddc-7f64b traefik-7f5c9597bf-8fdxh -n traefik
+   47  kubectl port-forward -n traefik svc/traefik 8081:8080
+   48  history >> a.txt
+    1  nb
+    2  sb
+    3  cb
+    4  nh
+    5  sh
+    6  ch
+    7  q # Salir
+    8  dc # Ver contenedores
+    9  dUp # Crear compose
+   10  gc # Clonar
+   11  cdm # Carpeta git
+   12  screen -S NOM -d -m comando
+   13  screen -r NOM # ctrl + a -> d (ingresar sin detener el proceso)
+   14  sudo reboot
+   15  kubectl logs -n kube-system -l k8s-app=cilium --tail=10
+   16  kubectl edit deployment traefik -n traefik
+   17  kubectl logs -n traefik -l app=traefik --tail=10
+   18  clear
+   19  kubectl rollout restart deployment/traefik -n traefik; sleep 35; kubectl logs -n traefik -l app=traefik --tail=10
+   20   kubectl logs -n traefik -l app=traefik --tail=10
+   21  clear
+   22  kubectl get ippools.crd.projectcalico.org -o yaml
+   23  cat <<EOF | kubectl apply -f -
+apiVersion: crd.projectcalico.org/v1
+kind: IPPool
+metadata:
+  name: corrected-ippool
+spec:
+  cidr: 10.245.0.0/16
+  blockSize: 26
+  ipipMode: Always
+  natOutgoing: true
+  mtu: 1440
+  nodeSelector: all()
+EOF
+
+   24  clear
+   25  kubectl exec -n traefik -it deployment/traefik -- cat /etc/resolv.conf
+   26  kubectl exec -n traefik -it deployment/traefik -- env | grep -i proxy
+   27  clear
+   28  kubectl exec -n traefik -it deployment/traefik -- sh -c "timeout 5 sh -c 'echo -e \"GET /directory HTTP/1.1\\r\\nHost: acme-v02.api.letsencrypt.org\\r\\nConnection: close\\r\\n\\r\\n\" | nc -w 3 172.65.32.248 443'"
+   29  clear
+   30  kubectl get ippools.crd.projectcalico.org -o jsonpath='{.items[*].spec.natOutgoing}'
+   31  sudo iptables -t nat -L -n -v | grep -A5 -B5 "10.244"
+   32  clear
+   33  sudo iptables -t nat -L POSTROUTING -n -v
+   34  clear
+   35  sudo iptables -t nat -L cali-POSTROUTING -n -v
+   36  clear
+   37  sudo iptables -t nat -L cali-nat-outgoing -n -v
+   38  clear
+   39  sudo ipset list | grep -E "cali40masq-ipam-pools|cali40all-ipam-pools"
+   40  clear
+   41  sudo ipset list cali40masq-ipam-pools
+   42  sudo ipset list cali40all-ipam-pools
+   43  sudo iptables -t nat -I POSTROUTING 1 -s 10.244.0.0/16 -j MASQUERADE
+   44  kubectl rollout restart deployment/traefik -n traefik; sleep 35; kubectl logs -n traefik -l app=traefik --tail=10
+   45  kubectl logs -n traefik -l app=traefik --tail=10
+   46  clear
+   47  kubectl exec -n traefik -it deployment/traefik -- ping -c 2 8.8.8.8
+   48  kubectl exec -n traefik -it deployment/traefik -- ip route get 8.8.8.8
+   49  clear
+   50  kubectl exec -n traefik -it deployment/traefik -- timeout 3 nc -zv 172.65.32.248 443
+   51  kubectl exec -n traefik -it deployment/traefik -- timeout 3 nc -zv 172.65.32.248 80
+   52  kubectl run -it --rm --image=alpine network-test --restart=Never -- sh
+   53  apk add curl
+   54  curl -v https://acme-v02.api.letsencrypt.org/directory
+   55  kubectl run -it --rm --image=alpine network-test --restart=Never -- sh
+   56  apk add curl
+   57  curl -v https://acme-v02.api.letsencrypt.org/directory
+   58  clear
+   59  kubectl get nodes -o wide
+   60  kubectl get ippools.crd.projectcalico.org -o yaml
+   61  ping -c 2 149.56.131.106  # Tu IP del VPS
+   62  clear
+   63  kubectl patch ippool default-ipv4-ippool -p '{"spec":{"ipipMode": "Never", "vxlanMode": "Always"}}'
+   64  kubectl patch ippool default-ipv4-ippool --type='merge' -p '{"spec":{"ipipMode": "Never", "vxlanMode": "Always"}}'
+   65  kubectl rollout restart deployment/traefik -n traefik
+   66  sleep 30
+   67  kubectl logs -n traefik -l app=traefik --tail=5
+   68  sudo systemctl status firewalld
+   69  sudo systemctl stop firewalld
+   70  kubectl logs -n traefik -l app=traefik --tail=5
+   71  kubectl rollout restart deployment/traefik -n traefik
+   72  kubectl logs -n traefik -l app=traefik --tail=5
+   73  sudo firewall-cmd --add-port=80/tcp --permanent
+   74  sudo firewall-cmd --add-port=443/tcp --permanent
+   75  sudo firewall-cmd --reload
+   76  sudo systemctl start firewalld
+   77  sudo firewall-cmd --add-port=80/tcp --permanent
+   78  sudo firewall-cmd --add-port=443/tcp --permanent
+   79  kubectl edit deployment traefik -n traefik
+   80  kubectl rollout restart deployment/traefik -n traefik
+   81  kubectl logs -n traefik -l app=traefik --tail=5
+   82  clear
+   83  kubectl describe pod -n traefik -l app=traefik
+   84  kubectl logs -n traefik -l app=traefik --tail=5
+   85  clear
+   86  kubectl get secrets --all-namespaces | grep swag-secrets-1
+   87  kubectl get secret swag-secrets-1 -o yaml --namespace=<namespace-original> | sed 's/namespace: .*/namespace: traefik/' | kubectl apply -f -
+   88  kubectl get secrets -A | grep swag-secrets-1
+   89  kubectl get pods -w
+   90  kubectl apply -f manifests/swag/
+   91  kubectl edit deployment traefik -n traefik
+   92  kubectl rollout restart deployment/traefik -n traefik
+   93  sleep 47
+   94  kubectl logs -n traefik -l app=traefik --tail=5
+   95  kubectl get secret swag-secrets-1 -o yaml --namespace=<namespace-original> | sed 's/namespace: .*/namespace: traefik/' | kubectl apply -f -
+   96  kubectl edit deployment traefik -n traefik
+   97  kubectl rollout restart deployment/traefik -n traefik
+   98  kubectl edit deployment traefik -n traefik
+   99  kubectl logs -n traefik -l app=traefik --tail=5
+  100  kubectl edit deployment traefik -n traefik
+  101  kubectl rollout restart deployment/traefik -n traefik
+  102  kubectl logs -n traefik -l app=traefik --tail=5
+  103  kubectl rollout restart deployment/traefik -n traefik
+  104  kubectl logs -n traefik -l app=traefik --tail=5
+  105  clear
+  106  kubectl logs -n traefik -l app=traefik --tail=5
+  107  clear
+  108  kubectl get pod -n traefik -l app=traefik -o yaml | grep -A5 -B5 "hostNetwork"
+  109  kubectl exec -n traefik -it deployment/traefik -- netstat -tlnp
+  110  kubectl logs -n traefik -l app=traefik --tail=10
+  111  clear
+  112  kubectl logs -n traefik -l app=traefik --tail=10
+  113  clear
+  114  sudo netstat -tlnp | grep :80
+  115  sudo dnf install net-tools
+  116  sudo netstat -tlnp | grep :80
+  117  clear
+  118  sudo docker ps | grep :80
+  119  sudo docker stop swag
+  120  sudo docker rm swag
+  121  sudo docker ps | grep :80
+  122  sudo netstat -tlnp | grep :80
+  123  kubectl logs -n traefik -l app=traefik --tail=10
+  124  kubectl rollout restart deployment/traefik -n traefik
+  125  kubectl logs -n traefik -l app=traefik --tail=10
+  126  kubectl edit deployment traefik -n traefik
+  127  kubectl rollout restart deployment/traefik -n traefik
+  128  kubectl logs -n traefik -l app=traefik --tail=10
+  129  kubectl edit deployment traefik -n traefik
+  130  kubectl logs -n traefik -l app=traefik --tail=10
+  131  clear
+  132  kubectl rollout restart deployment/traefik -n traefik
+  133  kubectl logs -n traefik -l app=traefik --tail=10
+  134  clear
+  135  kubectl get pods -n traefik
+  136* kubectl delete pod -l app=traefik 
+  137  kubectl delete pod traefik-6d45f9d96d-mdpmr -n traefik
+  138  kubectl logs -n traefik -l app=traefik --tail=10
+  139  clear
+  140  kubectl edit deployment traefik -n traefik
+  141  kubectl rollout restart deployment/traefik -n traefik
+  142  kubectl delete pod -l app=traefik -w
+  143  kubectl delete pod -l app=traefik 
+  144  kubectl get pods -n traefik -w
+  145  kubectl delete pod traefik-84d975ff77-cm9wd -n traefik
+  146  kubectl delete pod traefik-79bcb685f9-ktdqx -n traefik
+  147  kubectl get pods -n traefik -w
+  148  kubectl logs -n traefik -l app=traefik --tail=10
+  149  clear
+  150  kubectl exec -n traefik -it deployment/traefik -- nslookup iyata.duckdns.org
+  151  kubectl exec -n traefik -it deployment/traefik -- nslookup api.iyata.duckdns.org
+  152  curl "https://www.duckdns.org/update?domains=iyata,api,www&token=1cfb6881-33ac-4c48-a8b2-2a46f73779e8&ip=&ipv6="
+  153  curl "https://www.duckdns.org/update?domains=iyata,api,www&token=1cfb6881-33ac-4c48-a8b2-2a46f73779e8"
+  154  curl "https://www.duckdns.org/update?domains=iyata&token=1cfb6881-33ac-4c48-a8b2-2a46f73779e8&ip="
+  155  clear
+  156  curl "https://www.duckdns.org/update?domains=iyata&token=1cfb6881-33ac-4c48-a8b2-2a46f73779e8&ipv6="
+  157  ip -6 addr show
+  158  clear
+  159  ip -6 addr show dev eth0
+  160  hostname -I | grep -oE '([a-f0-9]{1,4}:){7}[a-f0-9]{1,4}'
+  161  curl -s 'https://api64.ipify.org'
+  162  curl "https://www.duckdns.org/update?domains=iyata&token=1cfb6881-33ac-4c48-a8b2-2a46f73779e8&ipv6=$(curl -s 'https://api64.ipify.org')"
+  163  clear
+  164  kubectl exec -n traefik -it deployment/traefik -- nslookup iyata.duckdns.org
+  165  history > z.txt
+      1  nb
+    2  sb
+    3  cb
+    4  nh
+    5  sh
+    6  ch
+    7  q # Salir
+    8  dc # Ver contenedores
+    9  dUp # Crear compose
+   10  gc # Clonar
+   11  cdm # Carpeta git
+   12  screen -S NOM -d -m comando
+   13  screen -r NOM # ctrl + a -> d (ingresar sin detener el proceso)
+   14  sudo reboot
+   15  kubectl logs -n kube-system -l k8s-app=cilium --tail=10
+   16   # Verificar logs de Traefik
+   17  kubectl logs -n traefik -l app=traefik -f
+   18  # Verificar que los servicios estén accesibles
+   19  kubectl get services -n traefik
+   20  # Probar el dashboard de Traefik
+   21  kubectl port-forward -n traefik service/traefik 8080:8080 &
+   22  # Luego ve a http://localhost:8080
+   23  # Verificar IngressRoutes
+   24  kubectl get ingressroutes -A
+   25  # Verificar que Traefik detecte tu servicio
+   26  kubectl exec -it deployment/traefik -n traefik -- traefik api --rest.http.addr=:8080 /api/http/routers
+   27  # Probar acceso via NodePort
+   28  curl -I http://iyata.duckdns.org:30080/
+   29  curl -I https://iyata.duckdns.org:30443/
+   30  # Verificar redirecciones
+   31  curl -v http://iyata.duckdns.org:30080/
+   32  clear
+   33  kubectl logs -n traefik -l app=traefik --tail=20
+   34  clear
+   35  kubectl get ingressroutes -A
+   36  clear
+   37  kubectl get service go-api-service-1
+   38  clear
+   39  kubectl exec -it deployment/traefik -n traefik -- ls -la /data/
+   40  clear
+   41  kubectl logs -n traefik -l app=traefik | grep -i acme
+   42  curl -I http://localhost:30080/
+   43  curl -I http://127.0.0.1:30080/
+   44  curl -H "Host: iyata.duckdns.org" http://localhost:30080/
+   45  curl -H "Host: api.iyata.duckdns.org" http://localhost:30080/
+   46  kubectl get networkpolicies -A
+   47  kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik-crd
+rules:
+- apiGroups: ["traefik.containo.us"]
+  resources: ["middlewares", "ingressroutes", "traefikservices", "ingressroutetcps", "ingressrouteudps", "tlsoptions", "tlsstores", "serverstransports"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services", "endpoints", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik-crd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik-crd
+subjects:
+- kind: ServiceAccount
+  name: traefik
+  namespace: traefik
+EOF
+
+   48  kubectl get ingressroute go-api-ingress -o yaml
+   49  kubectl apply -f - <<EOF
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: go-api-ingress
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+  - match: Host(\`iyata.duckdns.org\`) || Host(\`api.iyata.duckdns.org\`) || Host(\`www.iyata.duckdns.org\`)
+    kind: Rule
+    services:
+    - name: go-api-service-1
+      port: 4000
+  tls:
+    certResolver: letsencrypt
+EOF
+
+   50  kubectl rollout restart deployment/traefik -n traefik
+   51  kubectl get pods -n traefik -w
+   52  clear
+   53  kubectl logs -n traefik -l app=traefik --tail=10
+   54  kubectl exec -it deployment/traefik -n traefik -- traefik --api
+   55  clear
+   56  kubectl exec -it deployment/traefik -n traefik -- traefik --api
+   57  kubectl run -it --rm --image=curlimages/curl test -- curl -I http://go-api-service-1:4000/health
+   58  kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik-crd
+rules:
+- apiGroups: ["traefik.containo.us"]
+  resources: ["middlewares", "middlewaretcps", "ingressroutes", "traefikservices", "ingressroutetcps", "ingressrouteudps", "tlsoptions", "tlsstores", "serverstransports"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services", "endpoints", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik-crd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik-crd
+subjects:
+- kind: ServiceAccount
+  name: traefik
+  namespace: traefik
+EOF
+
+   59  # Escalar SWAG a 0 para liberar puertos
+   60  kubectl scale deployment swag-1 --replicas=0
+   61  # Verificar que el puerto 80 esté libre
+   62  sudo ss -tulpn | grep :80
+   63  # Si sigue ocupado, buscar qué proceso lo usa
+   64  sudo lsof -i :80
+   65  clear
+   66  # Verificar estado del pod de la API
+   67  kubectl get pods -l app=go-api
+   68  # Verificar logs de la API
+   69  kubectl logs -l app=go-api --tail=10
+   70  # Verificar endpoints del servicio
+   71  kubectl get endpoints go-api-service-1
+   72  # Probar conectividad DNS interna
+   73  kubectl run -it --rm --image=busybox test-dns -- nslookup go-api-service-1
+   74  # Probar conectividad al servicio
+   75  kubectl run -it --rm --image=curlimages/curl test-curl -- curl -v http://go-api-service-1:4000/health
+   76  clear
+   77  kubectl get networkpolicy deny-all-traffic -o yaml
+   78  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-egress-global
+spec:
+  podSelector:
+    matchLabels:
+      app: traefik
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP  
+      port: 443
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+EOF
+
+   79  clear
+   80  # Verificar estado de Calico
+   81  kubectl get pods -n kube-system -l k8s-app=calico-node
+   82  # Verificar logs de Calico
+   83  kubectl logs -n kube-system -l k8s-app=calico-node --tail=5
+   84  kubectl get networkpolicy deny-all-traffic -o yaml
+   85  curl -H "Host: api.iyata.duckdns.org" -v http://localhost:30080/health
+   86  curl -H "Host: iyata.duckdns.org" -v http://localhost:30080/
+   87  clear
+   88  # Actualizar deny-all-traffic para permitir tráfico esencial
+   89  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: deny-all-traffic
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  # Permitir DNS y tráfico esencial
+  egress:
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+EOF
+
+   90  # Verificar el IngressRoute actual
+   91  kubectl get ingressroute go-api-ingress -o yaml
+   92  # Si no existe o está mal configurado, recrearlo
+   93  kubectl delete ingressroute go-api-ingress --ignore-not-found=true
+   94  kubectl apply -f - <<EOF
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: go-api-ingress
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+  - match: Host(\`iyata.duckdns.org\`) || Host(\`api.iyata.duckdns.org\`) || Host(\`www.iyata.duckdns.org\`)
+    kind: Rule
+    services:
+    - name: go-api-service-1
+      port: 4000
+  tls:
+    certResolver: letsencrypt
+EOF
+
+   95  kubectl rollout restart deployment/traefik -n traefik
+   96  kubectl get pods -n traefik -w
+   97  # Esperar unos segundos y probar
+   98  sleep 10
+   99  curl -H "Host: api.iyata.duckdns.org" -v http://localhost:30080/health
+  100  clear
+  101  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://localhost:8080/api/http/services
+  102  kubectl auth can-i get services --as=system:serviceaccount:traefik:traefik
+  103  kubectl auth can-i get endpoints --as=system:serviceaccount:traefik:traefik
+  104  kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik-crd
+rules:
+- apiGroups: ["traefik.containo.us"]
+  resources: ["middlewares", "middlewaretcps", "ingressroutes", "traefikservices", "ingressroutetcps", "ingressrouteudps", "tlsoptions", "tlsstores", "serverstransports"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services", "endpoints", "secrets", "pods"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik-crd
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik-crd
+subjects:
+- kind: ServiceAccount
+  name: traefik
+  namespace: traefik
+EOF
+
+  105  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://go-api-service-1:4000/health
+  106  kubectl get endpoints go-api-service-1
+  107  kubectl rollout restart deployment/traefik -n traefik
+  108  clear
+  109  # Probar DNS interno desde Traefik
+  110  kubectl exec -it deployment/traefik -n traefik -- nslookup go-api-service-1
+  111  kubectl exec -it deployment/tefik -n traefik -- nslookup kubernetes.default
+  112  kubectl exec -it deployment/traefik -n traefik -- cat /etc/resolv.conf
+  113  # Asegurar que Traefik pueda acceder a kube-dns
+  114  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-dns
+  namespace: traefik
+spec:
+  podSelector:
+    matchLabels:
+      app: traefik
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+EOF
+
+  115  kubectl rollout restart deployment/traefik -n traefik
+  116  kubectl patch deployment traefik -n traefik -p '{"spec":{"template":{"spec":{"dnsPolicy":"ClusterFirst","dnsConfig":{"nameservers":["10.96.0.10"],"searches":["default.svc.cluster.local","svc.cluster.local","cluster.local","traefik.svc.cluster.local"]}}}}}'
+  117  kubectl rollout restart deployment/traefik -n traefik
+  118  clear
+  119  kubectl exec -it deployment/traefik -n traefik -- nslookup go-api-service-1.default.svc.cluster.local
+  120  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://go-api-service-1.default.svc.cluster.local:4000/health
+  121  kubectl apply -f - <<EOF
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: go-api-ingress
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+  - match: Host(\`iyata.duckdns.org\`) || Host(\`api.iyata.duckdns.org\`) || Host(\`www.iyata.duckdns.org\`)
+    kind: Rule
+    services:
+    - name: go-api-service-1.default.svc.cluster.local
+      port: 4000
+  tls:
+    certResolver: letsencrypt
+EOF
+
+  122  kubectl rollout restart deployment/traefik -n traefik
+  123  clear
+  124  kubectl exec -it deployment/traefik -n traefik -- nc -zv go-api-service-1.default.svc.cluster.local 4000
+  125  kubectl exec -it deployment/traefik -n traefik -- nc -zv 10.244.11.203 4000
+  126  kubectl get networkpolicies -A
+  127  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-to-go-api
+  namespace: default
+spec:
+  podSelector:
+    matchLabels:
+      app: go-api
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: traefik
+    ports:
+    - protocol: TCP
+      port: 4000
+EOF
+
+  128  kubectl describe service go-api-service-1
+  129  kubectl get pods -l app=go-api --show-labels
+  130  kubectl rollout restart deployment/traefik -n traefik
+  131  kubectl exec -it deployment/traefik -n traefik -- timeout 5 nc -zv go-api-service-1.default.svc.cluster.local 4000
+  132  kubectl exec -it deployment/traefik -n traefik -- timeout 5 wget -q -O - http://go-api-service-1.default.svc.cluster.local:4000/health
+  133  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://localhost:8080/api/http/services | jq .
+  134  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://localhost:8080/api/http/routers | jq .
+  135  # Aplicar Ingress nativo
+  136  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  rules:
+  - host: iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+  - host: api.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+  - host: www.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+EOF
+
+  137  # Verificar que Traefik detecte el Ingress
+  138  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://localhost:8080/api/http/routers | jq .
+  139  clear
+  140  kubectl describe deployment traefik -n traefik | grep Args -A 10
+  141  kubectl logs -n traefik -l app=traefik | grep -i provider
+  142  # Actualizar Traefik para usar tanto CRD como Ingress providers
+  143  kubectl patch deployment traefik -n traefik -p '{"spec":{"template":{"spec":{"containers":[{"name":"traefik","args":[
+  "--api.dashboard=true",
+  "--api.insecure=true", 
+  "--providers.kubernetescrd",
+  "--providers.kubernetesingress", 
+  "--entrypoints.web.address=:80",
+  "--entrypoints.websecure.address=:443",
+  "--certificatesresolvers.letsencrypt.acme.email=martinciro11@gmail.com",
+  "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json", 
+  "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+]}]}}}}'
+  144  # Aplicar Ingress nativo
+  145  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  rules:
+  - host: iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+  - host: api.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+  - host: www.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+EOF
+
+  146  kubectl rollout restart deployment/traefik -n traefik
+  147  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://localhost:8080/api/http/routers | jq .
+  148  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://localhost:8080/api/http/services | jq .
+  149  clear
+  150  kubectl run -it --rm --image=curlimages/curl test-internal -- curl -v http://go-api-service-1:4000/health
+  151  clear
+  152  kubectl run -it --rm --image=busybox test-default -- nslookup go-api-service-1
+  153  kubectl run -it --rm --image=busybox test-pod -- ping -c 3 10.244.11.203
+  154  kubectl run -it --rm --image=busybox test-pod -- nc -zv 10.244.11.203 4000
+  155  kubectl get networkpolicies -A -o wide
+  156  kubectl patch networkpolicy deny-all-traffic -p '{"spec":{"egress":[{}]}}'
+  157  kubectl run -it --rm --image=curlimages/curl test-internal -- curl -v http://go-api-service-1:4000/health
+  158  # Política para permitir TODO el tráfico interno (solo para desarrollo)
+  159  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-internal-traffic
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector: {}
+  egress:
+  - to:
+    - podSelector: {}
+EOF
+
+  160  kubectl exec -it deployment/traefik -n traefik -- timeout 5 wget -q -O - http://go-api-service-1.default.svc.cluster.local:4000/health
+  161  curl -H "Host: api.iyata.duckdns.org" -v http://localhost:30080/health
+  162  clear
+  163  # Probar conectividad en diferentes niveles
+  164  kubectl run -it --rm --image=nicolaka/netshoot test-network -- bash -c "
+  echo '=== DNS Test ==='
+  nslookup go-api-service-1
+  echo '=== Ping Test ==='
+  ping -c 2 10.244.11.203
+  echo '=== Port Test ==='  
+  nc -zv 10.244.11.203 4000
+  echo '=== HTTP Test ==='
+  curl -v http://go-api-service-1:4000/health
+"
+  165  clear
+  166  # Verificar estado de Calico
+  167  kubectl get pods -n kube-system -l k8s-app=calico-node
+  168  # Verificar logs de Calico
+  169  kubectl logs -n kube-system -l k8s-app=calico-node --tail=10
+  170  # Verificar ippools de Calico
+  171  kubectl get ippool -A -o yaml
+  172  # Crear un pod de diagnóstico de red
+  173  kubectl apply -f - <<EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: network-test
+  namespace: default
+spec:
+  containers:
+  - name: network-test
+    image: nicolaka/netshoot
+    command: ["sleep", "3600"]
+EOF
+
+  174  # Esperar a que esté running
+  175  kubectl wait --for=condition=ready pod/network-test
+  176  # Ejecutar diagnóstico completo
+  177  kubectl exec -it network-test -- bash -c "
+  echo '=== Network Interfaces ==='
+  ip addr show
+  echo '=== Routes ==='
+  ip route
+  echo '=== DNS Test ==='
+  nslookup go-api-service-1
+  nslookup kubernetes.default
+  echo '=== Connectivity Test ==='
+  ping -c 3 10.244.11.203
+  nc -zv 10.244.11.203 4000
+  curl -v http://go-api-service-1:4000/health
+"
+  178  clear
+  179  kubectl get events -A --sort-by=.metadata.creationTimestamp | grep -i error
+  180  kubectl describe node
+  181  kubectl describe limits -A
+  182  kubectl describe quotas -A
+  183  kubectl delete daemonset calico-node -n kube-system
+  184  kubectl delete deployment calico-kube-controllers -n kube-system
+  185  # Esperar a que se elimine
+  186  sleep 30
+  187  # Reinstalar Calico
+  188  kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml
+  189  kubectl get pods -A -o wide
+  190  kubectl get pods -A -o wide -w
+  191  clear
+  192  kubectl get pods -A -o wide
+  193  kubectl get pod -l app=go-api -o wide
+  194  # Guardar backup de las políticas (opcional)
+  195  kubectl get networkpolicies -A -o yaml > networkpolicies-backup.yaml
+  196  # Eliminar TODAS las NetworkPolicies
+  197  kubectl delete networkpolicies --all --all-namespaces
+  198  # Verificar que no queden políticas
+  199  kubectl get networkpolicies -A
+  200  kubectl run -it --rm --image=curlimages/curl test-connectivity -- curl -v http://go-api-service-1:4000/health
+  201  history > b.txt
+  202  kubectl describe serviceaccount traefik -n traefik
+  203  kubectl get secrets -n traefik
+  204  clear
+  205  kubectl describe serviceaccount traefik -n traefik
+  206  kubectl get secrets -n traefik
+  207  # Recrear ServiceAccount con token
+  208  kubectl delete serviceaccount traefik -n traefik
+  209  kubectl create serviceaccount traefik -n traefik
+  210  # Recrear ClusterRole y Binding
+  211  kubectl apply -f - <<EOF
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik
+rules:
+- apiGroups: [""]
+  resources: ["services", "endpoints", "secrets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["extensions", "networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["traefik.containo.us"]
+  resources: ["ingressroutes", "middlewares", "traefikservices", "ingressroutetcps", "ingressrouteudps", "tlsoptions", "tlsstores", "serverstransports"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik
+subjects:
+- kind: ServiceAccount
+  name: traefik
+  namespace: traefik
+EOF
+
+  212  kubectl rollout restart deployment/traefik -n traefik
+  213  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://localhost:8080/api/http/services | jq .
+  214  clear
+  215  # Verificar que puede ver servicios
+  216  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://localhost:8080/api/http/services | jq .
+  217  # Verificar routers
+  218  kubectl exec -it deployment/traefik -n traefik -- wget -q -O - http://localhost:8080/api/http/routers | jq .
+  219  curl -H "Host: api.iyata.duckdns.org" -v http://localhost:30080/health
+  220  curl -k -H "Host: api.iyata.duckdns.org" -v https://localhost:30443/health
+  221  clear
+  222  # Verificar logs para certificados
+  223  kubectl logs -n traefik -l app=traefik --tail=10 | grep -i acme
+  224  # Verificar archivo acme.json
+  225  kubectl exec -it deployment/traefik -n traefik -- cat /data/acme.json
+  226  # Actualizar Ingress para forzar HTTPS y usar certResolver
+  227  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+spec:
+  tls:
+  - hosts:
+    - iyata.duckdns.org
+    - api.iyata.duckdns.org
+    - www.iyata.duckdns.org
+    secretName: iyata-tls
+  rules:
+  - host: iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+  - host: api.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+  - host: www.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+EOF
+
+  228  kubectl rollout restart deployment/traefik -n traefik
+  229  # Actualizar Ingress para redirigir HTTP a HTTPS
+  230  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    # Redirigir HTTP a HTTPS
+    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+EOF
+
+  231  # Crear middleware de redirección
+  232  kubectl apply -f - <<EOF
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  namespace: default
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+EOF
+
+  233  # Aplicar Ingress completo con reglas y middleware
+  234  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: go-api-ingress
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    traefik.ingress.kubernetes.io/router.tls.certresolver: letsencrypt
+    # Redirigir HTTP a HTTPS
+    traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+spec:
+  tls:
+  - hosts:
+    - iyata.duckdns.org
+    - api.iyata.duckdns.org
+    - www.iyata.duckdns.org
+    secretName: iyata-tls
+  rules:
+  - host: iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+  - host: api.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+  - host: www.iyata.duckdns.org
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: go-api-service-1
+            port:
+              number: 4000
+EOF
+
+  235  curl -H "Host: api.iyata.duckdns.org" -L -v http://localhost:30080/health
+  236  curl -H "Host: api.iyata.duckdns.org" -I http://localhost:30080/health
+  237  clear
+  238  curl -H "Host: api.iyata.duckdns.org" -L -v http://localhost:30080/health
+  239  # Probar sin seguir redirección para ver el código
+  240  curl -H "Host: api.iyata.duckdns.org" -I http://localhost:30080/health
+  241  # Verificar logs para certificados
+  242  kubectl logs -n traefik -l app=traefik --tail=20 | grep -i acme
+  243  # Si no hay logs de ACME, verificar conectividad
+  244  kubectl exec -it deployment/traefik -n traefik -- nc -zv acme-v02.api.letsencrypt.org 443
+  245  # Permitir a Traefik salir a internet
+  246  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-egress
+  namespace: traefik
+spec:
+  podSelector:
+    matchLabels:
+      app: traefik
+  policyTypes:
+  - Egress
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+EOF
+
+  247  # Eliminar el Ingress actual y usar IngressRoute
+  248  kubectl delete ingress go-api-ingress
+  249  kubectl apply -f - <<EOF
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: go-api-ingress
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+  - match: Host(\`iyata.duckdns.org\`) || Host(\`api.iyata.duckdns.org\`) || Host(\`www.iyata.duckdns.org\`)
+    kind: Rule
+    services:
+    - name: go-api-service-1
+      port: 4000
+  tls:
+    certResolver: letsencrypt
+EOF
+
+  250  # Probar que Traefik puede conectar a Let's Encrypt
+  251  kubectl exec -it deployment/traefik -n traefik -- nc -zv acme-v02.api.letsencrypt.org 443
+  252  # Verificar logs para certificados
+  253  kubectl logs -n traefik -l app=traefik --tail=10 -f
+  254  clear
+  255  sudo ss -tulpn | grep -E ':(80|443)'
+  256  sudo ss -tulpn | grep -E ':(80|442)'
+  257  sudo ss -tulpn 
+  258  sudo ss -tulpn | grep -E ':(80|443)'
+  259  # Si no están abiertos, abrirlos
+  260  sudo firewall-cmd --list-ports
+  261  sudo firewall-cmd --permanent --add-port=80/tcp
+  262  sudo firewall-cmd --permanent --add-port=443/tcp
+  263  sudo firewall-cmd --reload
+  264  clear
+  265  nslookup acme-v02.api.letsencrypt.org
+  266  sudo dnf install nslookup -y
+  267  history > b.txt
+  268  clear
+  269  # Obtener el pod de Traefik
+  270  kubectl get pods -n traefik
+  271  # Ejecutar un comando de prueba de conectividad desde el pod de Traefik
+  272  kubectl exec -n traefik <traefik-pod-name> -- curl -v https://acme-v02.api.letsencrypt.org/directory
+  273  kubectl exec -n traefik traefik -- curl -v https://acme-v02.api.letsencrypt.org/directory
+  274  kubectl get svc -n default go-api-service-1
+  275  kubectl get pods -w
+  276  kubectl delete pod --all --field-selector=status.phase=Pending
+  277  kubectl get pods --field-selector=status.phase=Pending --no-headers -o custom-columns=":metadata.name" | xargs kubectl delete pod
+  278  history > b.txt
+    1  nb
+    2  sb
+    3  cb
+    4  nh
+    5  sh
+    6  ch
+    7  q # Salir
+    8  dc # Ver contenedores
+    9  dUp # Crear compose
+   10  gc # Clonar
+   11  cdm # Carpeta git
+   12  screen -S NOM -d -m comando
+   13  screen -r NOM # ctrl + a -> d (ingresar sin detener el proceso)
+   14  sudo reboot
+   15  kubectl logs -n kube-system -l k8s-app=cilium --tail=10
+   16  kubectl exec -n traefik traefik-58dcd78875-rl27g -- curl -v https://acme-v02.api.letsencrypt.org/directory
+   17  clear
+   18  # Obtener el nombre exacto del pod
+   19  kubectl get pods -n traefik
+   20  kubectl exec -n traefik traefik-58dcd78875-rl27g -- curl -v https://acme-v02.api.letsencrypt.org/directory
+   21  kubectl exec -n traefik traefik-58dcd78875-rl27g -- wget --timeout=5 -O- https://acme-v02.api.letsencrypt.org/directory
+   22  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-all-egress
+  namespace: traefik
+spec:
+  podSelector:
+    matchLabels:
+      app: traefik
+  policyTypes:
+  - Egress
+  egress:
+  - {}  # Permite TODO el tráfico saliente
+EOF
+
+   23  kubectl describe deployment traefik -n traefik | grep -A 30 "Args:"
+   24  kubectl describe configmap traefik -n traefik
+   25  # Eliminar cualquier Ingress existente
+   26  kubectl delete ingress go-api-ingress 2>/dev/null || true
+   27  # Aplicar IngressRoute correctamente
+   28  kubectl apply -f - <<EOF
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: go-api-ingress
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+  - match: Host(\`iyata.duckdns.org\`) || Host(\`api.iyata.duckdns.org\`) || Host(\`www.iyata.duckdns.org\`)
+    kind: Rule
+    services:
+    - name: go-api-service-1
+      port: 4000
+  tls:
+    certResolver: letsencrypt
+EOF
+
+   29  clear
+   30  kubectl apply -f - <<EOF
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: go-api-ingress
+spec:
+  entryPoints:
+    - web
+    - websecure
+  routes:
+  - match: Host(\`iyata.duckdns.org\`) || Host(\`api.iyata.duckdns.org\`) || Host(\`www.iyata.duckdns.org\`)
+    kind: Rule
+    services:
+    - name: go-api-service-1
+      port: 4000
+  tls:
+    certResolver: letsencrypt
+EOF
+
+   31  clear
+   32  kubectl logs -n traefik -l app=traefik --tail=20 | grep -i acme
+   33  clear
+   34  kubectl exec -n traefik traefik-58dcd78875-rl27g -- nslookup acme-v02.api.letsencrypt.org
+   35  kubectl exec -n traefik traefik-58dcd78875-rl27g -- timeout 5 bash -c "echo > /dev/tcp/acme-v02.api.letsencrypt.org/443" && echo "CONEXIÓN EXITOSA" || echo "FALLA EN CONEXIÓN"
+   36  clear
+   37  kubectl exec -n traefik traefik-58dcd78875-rl27g -- sh -c "nc -zv acme-v02.api.letsencrypt.org 443"
+   38  sudo iptables -L -n | grep -E "(DROP|REJECT)"
+   39  clear
+   40  kubectl get networkpolicies -A
+   41  kubectl delete networkpolicy allow-traefik-egress -n traefik
+   42  kubectl get networkpolicies -A
+   43  kubectl rollout restart deployment/traefik -n traefik
+   44  kubectl logs -n traefik -l app=traefik --tail=10 -f
+   45  clear
+   46  kubectl get pods -n kube-system | grep -E "(calico|flannel|weave|cilium)"
+   47  kubectl apply -f - <<EOF
+apiVersion: projectcalico.org/v3
+kind: GlobalNetworkPolicy
+metadata:
+  name: allow-traefik-egress
+spec:
+  selector: app == 'traefik'
+  namespaceSelector: name == 'traefik'
+  types:
+  - Egress
+  egress:
+  - action: Allow
+    protocol: TCP
+    destination:
+      ports: [80, 443, 53]
+  - action: Allow
+    protocol: UDP
+    destination:
+      ports: [53]
+EOF
+
+   48  clear
+   49  kubectl delete networkpolicy allow-traefik-all-egress -n traefik
+   50  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-egress
+  namespace: traefik
+spec:
+  podSelector:
+    matchLabels:
+      app: traefik
+  policyTypes:
+  - Egress
+  egress:
+  # Permitir DNS
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Permitir HTTP/HTTPS a cualquier destino
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+EOF
+
+   51  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "nc -zv acme-v02.api.letsencrypt.org 443"
+   52  curl -v https://acme-v02.api.letsencrypt.org/directory
+   53  clear
+   54  kubectl get felixconfigurations.crd.projectcalico.org -o yaml
+   55  clear
+   56  kubectl get networkpolicies.crd.projectcalico.org -A
+   57  kubectl get globalnetworkpolicies.crd.projectcalico.org
+   58  ip route | grep cali
+   59  clear
+   60  sudo iptables -t filter -I FORWARD -o cali+ -j ACCEPT
+   61  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 5 nc -zv acme-v02.api.letsencrypt.org 443"
+   62  kubectl logs -n traefik -l app=traefik --tail=5
+   63  kubectl rollout restart deployment/traefik -n traefik
+   64  clear
+   65  kubectl logs -n traefik -l app=traefik --tail=5
+   66  kubectl logs -n traefik -l app=traefik -w
+   67  kubectl logs -n traefik -l app=traefik 
+   68  kubectl logs -n traefik -l app=traefik -w
+   69  kubectl logs -n traefik -l app=traefik --tail=5
+   70  clear
+   71  sudo iptables -t filter -I FORWARD -s 10.244.0.0/16 -j ACCEPT
+   72  sudo iptables -t filter -I FORWARD -d 10.244.0.0/16 -j ACCEPT
+   73  kubectl rollout restart deployment/traefik -n traefik
+   74  kubectl logs -n traefik -l app=traefik --tail=3
+   75  clear
+   76  sudo iptables -t filter -D FORWARD -o cali+ -j ACCEPT
+   77  sudo iptables -t filter -D FORWARD -s 10.244.0.0/16 -j ACCEPT
+   78  sudo iptables -t filter -D FORWARD -d 10.244.0.0/16 -j ACCEPT
+   79  kubectl rollout restart deployment/traefik -n traefik
+   80  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-traefik-egress
+  namespace: traefik
+spec:
+  podSelector:
+    matchLabels:
+      app: traefik
+  policyTypes:
+  - Egress
+  egress:
+  # Permitir tráfico interno del cluster
+  - to:
+    - ipBlock:
+        cidr: 10.0.0.0/8
+    ports:
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 53
+    - protocol: UDP
+      port: 53
+  # Permitir DNS externo
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Permitir HTTP/HTTPS a Let's Encrypt y otros servicios externos
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+EOF
+
+   81  kubectl rollout restart deployment/traefik -n traefik
+   82   sleep 10 && kubectl logs -n traefik -l app=traefik --tail=5
+   83  kubectl delete networkpolicy allow-traefik-egress -n traefik
+   84  clear
+   85  kubectl apply -f - <<EOF
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-all-traefik-egress
+  namespace: traefik
+spec:
+  podSelector:
+    matchLabels:
+      app: traefik
+  policyTypes:
+  - Egress
+  egress:
+  - {}
+EOF
+
+   86  kubectl rollout restart deployment/traefik -n traefik
+   87  sleep 15 && kubectl logs -n traefik -l app=traefik --tail=10
+   88  kubectl logs -n traefik -l app=traefik --tail=10
+   89  sudo iptables -t filter -I FORWARD -o cali+ -p tcp --dport 443 -j ACCEPT
+   90  kubectl rollout restart deployment/traefik -n traefik
+   91  kubectl logs -n traefik -l app=traefik --tail=10
+   92  clear
+   93  kubectl logs -n traefik -l app=traefik --tail=5 | grep -i acme
+   94  sudo iptables -t filter -I FORWARD -o cali+ -p tcp --dport 80 -j ACCEPT
+   95  kubectl rollout restart deployment/traefik -n traefik; sleep 45 && kubectl logs -n traefik -l app=traefik --tail=10
+   96  clear
+   97  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- ip route
+   98  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "wget --timeout=10 -O- http://172.65.32.248:443/"
+   99  clear
+  100  kubectl get ippools.crd.projectcalico.org -o yaml
+  101  sudo iptables -t nat -L | grep -A 5 -B 5 MASQUERADE
+  102  clear
+  103  sudo ipset list | grep -E "(cali40masq|cali40all)" | head -10
+  104  sudo ipset list cali40all-ipam-pools
+  105  clear
+  106  sudo ipset list cali40masq-ipam-pools
+  107  kubectl delete pod -n kube-system -l k8s-app=calico-node
+  108  sleep 30 && kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+  109  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+  110  kubectl patch ippools.crd.projectcalico.org default-ipv4-ippool -p '{"spec":{"natOutgoing":false}}'
+  111  kubectl patch ippools.crd.projectcalico.org default-ipv4-ippool --type='merge' -p '{"spec":{"natOutgoing":false}}'
+  112  clear
+  113  sudo iptables -t nat -A POSTROUTING -s 10.244.0.0/16 -j MASQUERADE
+  114  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+  115  clear
+  116  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  117  sudo dnf install tcpdump
+  118  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  119  sudo iptables -t filter -L FORWARD | grep -E "(ACCEPT|DROP)" | head -20
+  120  sudo iptables -t filter -I FORWARD -i cali+ -m state --state ESTABLISHED,RELATED -j ACCEPT
+  121  sudo iptables -t filter -L FORWARD | grep -E "(ACCEPT|DROP)" | head -20
+  122  clear
+  123  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  124  clear
+  125  curl -s ifconfig.me && echo
+  126  curl -6 -v https://acme-v02.api.letsencrypt.org/directory
+  127  clear
+  128  kubectl get nodes -o wide
+  129  kubectl get configmap -n kube-system calico-config -o yaml
+  130  clear
+  131  curl -4 -s ifconfig.me
+  132  kubectl apply -f - <<EOF
+apiVersion: crd.projectcalico.org/v1
+kind: FelixConfiguration
+metadata:
+  name: default
+spec:
+  externalNodesList:
+  - 149.56.131.106/32
+EOF
+
+  133  kubectl delete pod -n kube-system -l k8s-app=calico-node
+  134  sleep 30 && kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+  135  clear
+  136  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  137  kubectl patch felixconfigurations.crd.projectcalico.org default --type='merge' -p '{"spec":{"bpfEnabled":false}}'
+  138  kubectl delete pod -n kube-system -l k8s-app=calico-node
+  139  sleep 30 && kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+  140  clear
+  141  kubectl apply -f - <<EOF
+apiVersion: crd.projectcalico.org/v1
+kind: GlobalNetworkPolicy
+metadata:
+  name: allow-all
+spec:
+  selector: all()
+  types:
+  - Ingress
+  - Egress
+  ingress:
+  - action: Allow
+  egress:
+  - action: Allow
+EOF
+
+  142  kubectl rollout restart deployment/traefik -n traefik && sleep 20 && kubectl logs -n traefik -l app=traefik --tail=5 | grep -i acme
+  143  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  144  kubectl logs -n traefik -l app=traefik --tail=5 | grep -i acme
+  145  clear
+  146  kubectl patch ippools.crd.projectcalico.org default-ipv4-ippool --type='merge' -p '{"spec":{"ipipMode":"CrossSubnet"}}'
+  147  ip route show table all | grep -E "(cali|tunl|10.244)"
+  148  clear
+  149  ip link show tunl0
+  150  kubectl patch ippools.crd.projectcalico.org default-ipv4-ippool --type='merge' -p '{"spec":{"ipipMode":"Never"}}'
+  151  kubectl delete pod -n kube-system -l k8s-app=calico-node
+  152  clear
+  153  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  154  clear
+  155  kubectl apply -f - <<EOF
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: traefik-env
+  namespace: traefik
+data:
+  HTTP_PROXY: ""
+  HTTPS_PROXY: "" 
+  NO_PROXY: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,.svc,.svc.cluster.local"
+EOF
+
+  156  kubectl patch deployment traefik -n traefik --type='json' -p='[{"op": "add", "path": "/spec/template/spec/containers/0/envFrom", "value": [{"configMapRef": {"name": "traefik-env"}}]}]'
+  157  kubectl rollout restart deployment/traefik -n traefik && sleep 20 && kubectl logs -n traefik -l app=traefik --tail=5 | grep -i acme
+  158  sudo iptables -t nat -L POSTROUTING -v -n
+  159  kubectl logs -n traefik -l app=traefik --tail=5 | grep -i acme
+  160  clear
+  161  sudo iptables -t nat -L POSTROUTING -v -n | grep -A 2 -B 2 "10.244"
+  162  sudo iptables -t nat -L cali-POSTROUTING -v -n
+  163  clear
+  164  sudo iptables -t nat -L cali-nat-outgoing -v -n
+  165  kubectl patch ippools.crd.projectcalico.org default-ipv4-ippool --type='merge' -p '{"spec":{"natOutgoing":true}}'
+  166  kubectl delete pod -n kube-system -l k8s-app=calico-node
+  167  sleep 30 && sudo iptables -t nat -L cali-nat-outgoing -v -n
+  168  sudo iptables -t nat -L cali-nat-outgoing -v -n
+  169  clear
+  170  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  171  clear
+  172  sudo iptables -t nat -L cali-nat-outgoing -v -n --line-numbers
+  173  sudo iptables -t nat -I cali-nat-outgoing 1 -j LOG --log-prefix "CALI-NAT-OUTGOING: "
+  174  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 3 wget -O- https://acme-v02.api.letsencrypt.org/directory" && sudo dmesg | grep "CALI-NAT-OUTGOING" | tail -5
+  175  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  176  sudo iptables -t filter -I FORWARD 1 -j LOG --log-prefix "FORWARD-TRAFFIC: "
+  177  clear
+  178  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  179  clear
+  180  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  181  kubectl delete pod -n kube-system -l k8s-app=calico-node
+  182  clear
+  183  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  184  clear
+  185  kubectl logs -n kube-system -l k8s-app=calico-node --tail=10
+  186  kubectl get nodes vps-dc33a175.vps.ovh.ca -o yaml | grep -A 10 -B 10 "projectcalico.org"
+  187  clear
+  188  kubectl patch bgpconfigurations.crd.projectcalico.org default --type='merge' -p '{"spec":{"nodeToNodeMeshEnabled":false}}'
+  189  kubectl apply -f - <<EOF
+apiVersion: crd.projectcalico.org/v1
+kind: BGPPeer
+metadata:
+  name: default-peer
+spec:
+  peerIP: 149.56.128.1
+  asNumber: 64512
+EOF
+
+  190  kubectl delete pod -n kube-system -l k8s-app=calico-node
+  191  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  192  clear
+  193  kubectl delete bgppeers.crd.projectcalico.org default-peer
+  194  ip route get 172.65.32.248
+  195  kubectl exec -n traefik traefik-795b684db9-l5h27 -- ping -c 3 149.56.128.1
+  196  sudo ip route add 172.65.32.248/32 via 149.56.128.1 dev ens3 src 149.56.131.106
+  197  kubectl exec -n traefik traefik-795b684db9-l5h27 -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+  198  sudo tcpdump -i any -n host 172.65.32.248 and port 443 -c 10
+  199  clear
+  200  kubectl delete networkpolicy allow-all-traefik-egress -n traefik
+  201  kubectl delete bgpconfigurations.crd.projectcalico.org default
+  202  kubectl delete globalnetworkpolicies.crd.projectcalico.org allow-all
+  203  sudo iptables -t nat -D POSTROUTING -s 10.244.0.0/16 -j MASQUERADE
+  204  sudo iptables -t nat -D POSTROUTING -s 10.244.11.239 -j MASQUERADE
+  205  sudo iptables -t filter -D FORWARD -o cali+ -p tcp --dport 443 -j ACCEPT
+  206  sudo iptables -t filter -D FORWARD -o cali+ -p tcp --dport 80 -j ACCEPT
+  207  sudo iptables -t filter -D FORWARD -i cali+ -m state --state ESTABLISHED,RELATED -j ACCEPT
+  208  sudo ip route del 172.65.32.248/32 via 149.56.128.1 dev ens3 src 149.56.131.106
+  209  kubectl patch ippools.crd.projectcalico.org default-ipv4-ippool --type='merge' -p '{"spec":{"natOutgoing":true,"ipipMode":"Always"}}'
+  210  kubectl delete ingressroute go-api-ingress
+  211  kubectl delete middleware redirect-https -n default
+  212  sudo dnf install firewalld
+  213  # Iniciar el servicio
+  214  sudo systemctl start firewalld
+  215  # Habilitar para que inicie automáticamente al arrancar
+  216  sudo systemctl enable firewalld
+  217  # Verificar el estado
+  218  sudo systemctl status firewalld
+  219  sudo firewall-cmd --permanent --remove-port=80/tcp
+  220  sudo firewall-cmd --permanent --remove-port=443/tcp
+  221  sudo firewall-cmd --reload
+  222  sudo firewall-cmd --list-ports
+  223  history > d.txt
+    1  nb
+    2  sb
+    3  cb
+    4  nh
+    5  sh
+    6  ch
+    7  q # Salir
+    8  dc # Ver contenedores
+    9  dUp # Crear compose
+   10  gc # Clonar
+   11  cdm # Carpeta git
+   12  screen -S NOM -d -m comando
+   13  screen -r NOM # ctrl + a -> d (ingresar sin detener el proceso)
+   14  sudo reboot
+   15  kubectl logs -n kube-system -l k8s-app=cilium --tail=10
+   16  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+   17  sleep 30 && kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+   18  clear
+   19  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+   20  clear
+   21  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 3 wget -O- https://acme-v02.api.letsencrypt.org/directory" && sudo dmesg | grep "CALI-NAT-OUTGOING" | tail -5
+   22  kubectl exec -n traefik $(kubectl get pods -n traefik -l app=traefik -o jsonpath='{.items[0].metadata.name}') -- sh -c "timeout 3 wget -O- https://acme-v02.api.letsencrypt.org/directory" && sudo dmesg | grep "FORWARD-TRAFFIC" | tail -10
+   23  clear
+   24  kubectl get felixconfigurations.crd.projectcalico.org default -o yaml
+   25  sudo iptables -t filter -D FORWARD 1
+   26  sudo iptables -t nat -D cali-nat-outgoing 1
+   27  kubectl delete pod -n kube-system -l k8s-app=calico-node
+   28  sleep 30 && sudo iptables -t nat -L cali-nat-outgoing -v -n
+   29  clear
+   30  kubectl get pods -n traefik -o wide
+   31  sudo iptables -t nat -I POSTROUTING 1 -s 10.244.11.239 -j MASQUERADE
+   32  kubectl exec -n traefik traefik-795b684db9-l5h27 -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+   33  ip route get 172.65.32.248 from 10.244.11.239
+   34  ip route show
+   35  clear
+   36  kubectl get bgpconfigurations.crd.projectcalico.org -o yaml
+   37  kubectl exec -n kube-system -l k8s-app=calico-node -- birdcl show protocols
+   38  clear
+   39  kubectl exec -n kube-system $(kubectl get pods -n kube-system -l k8s-app=calico-node -o jsonpath='{.items[0].metadata.name}') -- birdcl show protocols
+   40  kubectl apply -f - <<EOF
+apiVersion: crd.projectcalico.org/v1
+kind: BGPConfiguration
+metadata:
+  name: default
+spec:
+  logSeverityScreen: Info
+  nodeToNodeMeshEnabled: true
+  asNumber: 64512
+EOF
+
+   41  sleep 30 && kubectl exec -n kube-system $(kubectl get pods -n kube-system -l k8s-app=calico-node -o jsonpath='{.items[0].metadata.name}') -- birdcl show protocols
+   42  kubectl exec -n traefik traefik-795b684db9-l5h27 -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+   43  clear
+   44  [rocky@vps-dc33a175 template-nest]$ kubectl exec -n traefik traefik-795b684db9-l5h27 -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+   45  Connecting to acme-v02.api.letsencrypt.org (172.65.32.248:443)
+   46  command terminated with exit code 143
+   47  clear
+   48  kubectl exec -n traefik traefik-795b684db9-l5h27 -- sh -c "timeout 10 wget -O- https://acme-v02.api.letsencrypt.org/directory"
+   49  history > e.txt
+

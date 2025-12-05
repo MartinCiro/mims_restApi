@@ -37,7 +37,8 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: swag-pvc-1
+  name: traefik-data
+  namespace: traefik
   labels:
     instance: "1"
 spec:
@@ -49,5 +50,5 @@ spec:
   storageClassName: local-storage
   selector:
     matchLabels:
-      app: swag
+      app: traefik
       instance: "1"
