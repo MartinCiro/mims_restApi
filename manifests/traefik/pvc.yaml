@@ -3,9 +3,16 @@ kind: PersistentVolumeClaim
 metadata:
   name: traefik-data
   namespace: traefik
+  labels:
+    instance: "1"
 spec:
   accessModes:
     - ReadWriteOnce
+  storageClassName: local-storage
+  selector:
+    matchLabels:
+      app: traefik
+      instance: "1"
   resources:
     requests:
       storage: 1Gi

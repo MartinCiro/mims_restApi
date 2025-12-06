@@ -13,5 +13,4 @@ spec:
   - protocol: TCP
     port: 4000              # ← Puerto interno del Service
     targetPort: 4000        # ← Puerto del contenedor (tu API)
-    nodePort: 30400         # ← ⭐ Puerto externo para desarrollo
   type: LoadBalancer            # ← ⭐ Para acceso externo en desarrollo

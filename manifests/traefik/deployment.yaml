@@ -1,36 +1,27 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  annotations:
-    deployment.kubernetes.io/revision: "1"
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"apps/v1","kind":"Deployment","metadata":{"annotations":{},"name":"traefik","namespace":"traefik"},"spec":{"replicas":1,"selector":{"matchLabels":{"app":"traefik"}},"template":{"metadata":{"labels":{"app":"traefik"}},"spec":{"containers":[{"args":["--api.dashboard=true","--api.insecure=true","--providers.kubernetesingress","--entrypoints.web.address=:80","--entrypoints.websecure.address=:443","--certificatesresolvers.letsencrypt.acme.email=martinciro11@gmail.com","--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json","--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"],"image":"traefik:v2.10","name":"traefik","ports":[{"containerPort":80,"name":"web"},{"containerPort":443,"name":"websecure"},{"containerPort":8080,"name":"admin"}],"volumeMounts":[{"mountPath":"/data","name":"data"}]}],"hostNetwork":true,"serviceAccountName":"traefik","volumes":[{"emptyDir":{},"name":"data"}]}}}}
-  creationTimestamp: "2025-12-04T10:50:23Z"
-  generation: 1
   name: traefik
   namespace: traefik
-  resourceVersion: "650926"
-  uid: 6c5e8b46-f0d9-46a6-a8bb-761702b4c9a6
 spec:
-  progressDeadlineSeconds: 600
   replicas: 1
-  revisionHistoryLimit: 10
   selector:
     matchLabels:
       app: traefik
   strategy:
+    type: RollingUpdate
     rollingUpdate:
       maxSurge: 25%
       maxUnavailable: 25%
-    type: RollingUpdate
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: traefik
     spec:
       containers:
-      - args:
+      - name: traefik
+        image: traefik:v2.10
+        args:
         - --api.dashboard=true
         - --api.insecure=true
         - --providers.kubernetesingress
@@ -39,52 +30,21 @@ spec:
         - --certificatesresolvers.letsencrypt.acme.email=martinciro11@gmail.com
         - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
         - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
-        image: traefik:v2.10
-        imagePullPolicy: IfNotPresent
-        name: traefik
         ports:
-        - containerPort: 80
-          name: web
+        - name: web
+          containerPort: 80
           protocol: TCP
-        - containerPort: 443
-          name: websecure
+        - name: websecure
+          containerPort: 443
           protocol: TCP
-        - containerPort: 8080
-          name: admin
+        - name: admin
+          containerPort: 8080
           protocol: TCP
-        resources: {}
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
         volumeMounts:
-        - mountPath: /data
-          name: data
-      dnsPolicy: ClusterFirst
+        - name: data
+          mountPath: /data
       hostNetwork: true
-      restartPolicy: Always
-      schedulerName: default-scheduler
-      securityContext: {}
-      serviceAccount: traefik
       serviceAccountName: traefik
-      terminationGracePeriodSeconds: 30
       volumes:
-      - emptyDir: {}
-        name: data
-status:
-  availableReplicas: 1
-  conditions:
-  - lastTransitionTime: "2025-12-04T10:50:25Z"
-    lastUpdateTime: "2025-12-04T10:50:25Z"
-    message: Deployment has minimum availability.
-    reason: MinimumReplicasAvailable
-    status: "True"
-    type: Available
-  - lastTransitionTime: "2025-12-04T10:50:23Z"
-    lastUpdateTime: "2025-12-04T10:50:25Z"
-    message: ReplicaSet "traefik-c4d49d9d8" has successfully progressed.
-    reason: NewReplicaSetAvailable
-    status: "True"
-    type: Progressing
-  observedGeneration: 1
-  readyReplicas: 1
-  replicas: 1
-  updatedReplicas: 1
+      - name: data
+        emptyDir: {}

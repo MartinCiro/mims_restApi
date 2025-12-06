@@ -1,120 +1,26 @@
-# manifests/shared/network-policies.yaml
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: deny-all-traffic
+  name: allow-frontend-ingress
   namespace: default
 spec:
-  podSelector: {}  # Aplica a todos los pods
-  policyTypes:
-  - Ingress
-  - Egress
-  # Deniega todo el tráfico por defecto
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-go-api-egress
-spec:
   podSelector:
     matchLabels:
-      app: go-api
-  policyTypes:
-  - Egress
-  egress:
-  # Permitir salida a DNS (Kubernetes DNS)
-  - ports:
-    - port: 53
-      protocol: UDP
-    - port: 53
-      protocol: TCP
-  # Permitir salida a PostgreSQL
-  - to:
-    - podSelector:
-        matchLabels:
-          app: postgres
-    ports:
-    - port: 5432
-      protocol: TCP
-  # Permitir salida a Redis
-  - to:
-    - podSelector:
-        matchLabels:
-          app: redis
-    ports:
-    - port: 6379
-      protocol: TCP
-  # Permitir salida a internet para actualizaciones (opcional)
-  - to:
-    - ipBlock:
-        cidr: 0.0.0.0/0
-    ports:
-    - port: 80
-      protocol: TCP
-    - port: 443
-      protocol: TCP
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-postgres-ingress
-spec:
-  podSelector:
-    matchLabels:
-      app: postgres
+      app: frontend
   policyTypes:
   - Ingress
   ingress:
-  # Solo permitir entrada desde Go API
+  # Permitir entrada desde cualquier pod en el namespace
   - from:
-    - podSelector:
+    - podSelector: {}
+    ports:
+    - port: 3000
+      protocol: TCP
+  # Permitir entrada desde Traefik namespace
+  - from:
+    - namespaceSelector:
         matchLabels:
-          app: go-api
+          kubernetes.io/metadata.name: traefik
     ports:
-    - port: 5432
-      protocol: TCP
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-redis-ingress
-spec:
-  podSelector:
-    matchLabels:
-      app: redis
-  policyTypes:
-  - Ingress
-  ingress:
-  # Solo permitir entrada desde Go API
-  - from:
-    - podSelector:
-        matchLabels:
-          app: go-api
-    ports:
-    - port: 6379
-      protocol: TCP
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-go-api-ingress
-spec:
-  podSelector:
-    matchLabels:
-      app: go-api
-  policyTypes:
-  - Ingress
-  ingress:
-  # Permitir entrada desde cualquier pod en el namespace (para health checks)
-  - from:
-    - podSelector: {}  # Todos los pods en el namespace
-    ports:
-    - port: 4000
-      protocol: TCP
-  # Permitir entrada desde el mundo exterior (a través del Service)
-  - from:
-    - ipBlock:
-        cidr: 0.0.0.0/0  # O restringir a IPs específicas
-    ports:
-    - port: 4000  
+    - port: 3000
       protocol: TCP
