@@ -1,0 +1,32 @@
+# Ignorar archivos del sistema
+.git
+.gitignore
+.vscode
+.idea
+*.iml
+
+# Ignorar logs y archivos temporales
+*.log
+*.tmp
+*.temp
+
+# Ignorar target y build
+target/
+build/
+bin/
+out/
+
+# Ignorar configuración local
+.env.local
+*.env
+
+# Ignorar documentación
+README.md
+CHANGELOG.md
+
+# Ignorar archivos de datos
+*.db
+*.sqlite
+
+# Ignorar archivos de Docker
+docker-compose.override.yml

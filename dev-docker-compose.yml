@@ -1,0 +1,66 @@
+services:
+  # Aplicación Spring Boot
+  app:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      target: builder  # Usamos solo la etapa de construcción
+    container_name: java-dev-app
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./:/app  # Montar código fuente
+      - maven-repo:/root/.m2  # Cache de Maven
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev,docker
+      - SPRING_DATASOURCE_URL={$HOST}
+      - SPRING_DATASOURCE_USERNAME={$user}
+      - SPRING_DATASOURCE_PASSWORD={$passwd}
+      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+    command: mvn spring-boot:run
+    networks:
+      - java-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: java-dev-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - java-network
+
+  # Monitor de logs (opcional)
+  logspout:
+    image: gliderlabs/logspout
+    container_name: java-dev-logspout
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: raw://tcp://logs:5000
+    depends_on:
+      - logs
+    networks:
+      - java-network
+
+  logs:
+    image: grafana/loki:2.9.0
+    container_name: java-dev-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    networks:
+      - java-network
+
+volumes:
+  mariadb-data:
+    driver: local
+  maven-repo:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  java-network:
+    driver: bridge
