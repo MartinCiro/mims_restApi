@@ -13,9 +13,9 @@ services:
       - maven-repo:/root/.m2  # Cache de Maven
     environment:
       - SPRING_PROFILES_ACTIVE=dev,docker
-      - SPRING_DATASOURCE_URL={$HOST}
-      - SPRING_DATASOURCE_USERNAME={$user}
-      - SPRING_DATASOURCE_PASSWORD={$passwd}
+      - SPRING_DATASOURCE_URL=${HOST}
+      - SPRING_DATASOURCE_USERNAME=${user}
+      - SPRING_DATASOURCE_PASSWORD=${passwd}
       - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
     command: mvn spring-boot:run
     networks:
