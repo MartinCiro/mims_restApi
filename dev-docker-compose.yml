@@ -3,20 +3,20 @@ services:
   app:
     build:
       context: ./
-      dockerfile: Dockerfile
-      target: builder  # Usamos solo la etapa de construcción
     container_name: java-dev-app
     ports:
       - "8080:8080"
+      - "5006:5006"
     volumes:
-      - ./:/app  # Montar código fuente
-      - maven-repo:/root/.m2  # Cache de Maven
+      - ./src:/app/src  
+      - ./pom.xml:/app/pom.xml 
+      - maven-repo:/root/.m2
     environment:
       - SPRING_PROFILES_ACTIVE=dev,docker
-      - SPRING_DATASOURCE_URL=${HOST}
-      - SPRING_DATASOURCE_USERNAME=${user}
-      - SPRING_DATASOURCE_PASSWORD=${passwd}
-      - JAVA_TOOL_OPTIONS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005
+      - SPRING_DATASOURCE_URL=${DB_HOST}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_URL=jdbc:mariadb://${DB_HOST}:3306/${DB_NAME}
     command: mvn spring-boot:run
     networks:
       - java-network
@@ -29,18 +29,6 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
-    networks:
-      - java-network
-
-  # Monitor de logs (opcional)
-  logspout:
-    image: gliderlabs/logspout
-    container_name: java-dev-logspout
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: raw://tcp://logs:5000
-    depends_on:
-      - logs
     networks:
       - java-network
 

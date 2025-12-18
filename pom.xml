@@ -6,7 +6,7 @@
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
 		<version>4.0.0</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<relativePath/>
 	</parent>
 	<groupId>gm.zona_fit</groupId>
 	<artifactId>demo</artifactId>
@@ -30,7 +30,6 @@
 		<java.version>25</java.version>
 	</properties>
 	<dependencies>
-		<!-- AÑADE ESTA DEPENDENCIA PARA REST API -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
