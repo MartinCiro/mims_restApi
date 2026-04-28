@@ -4,15 +4,10 @@ metadata:
   name: traefik
   namespace: traefik
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: traefik
-  strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 25%
-      maxUnavailable: 25%
   template:
     metadata:
       labels:
@@ -20,31 +15,45 @@ spec:
     spec:
       containers:
       - name: traefik
-        image: traefik:v2.10
+        image: traefik:v3.0
         args:
         - --api.dashboard=true
-        - --api.insecure=true
+        - --api.insecure=false
         - --providers.kubernetesingress
-        - --entrypoints.web.address=:80
-        - --entrypoints.websecure.address=:443
-        - --certificatesresolvers.letsencrypt.acme.email=martinciro11@gmail.com
-        - --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
-        - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+        - --providers.kubernetescrd
+        - --entrypoints.web.address=:8080
+        - --entrypoints.web.http.redirections.entrypoint.to=websecure
+        - --entrypoints.web.http.redirections.entrypoint.scheme=https
+        - --entrypoints.websecure.address=:8443
+        - --log.level=WARN
+        - --accesslog=true
         ports:
         - name: web
-          containerPort: 80
+          containerPort: 8080
           protocol: TCP
         - name: websecure
-          containerPort: 443
+          containerPort: 8443
           protocol: TCP
         - name: admin
-          containerPort: 8080
+          containerPort: 9000
           protocol: TCP
         volumeMounts:
         - name: data
           mountPath: /data
-      hostNetwork: true
-      serviceAccountName: traefik
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /ping
+            port: admin
+          initialDelaySeconds: 30
+          periodSeconds: 10
       volumes:
       - name: data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: traefik-data

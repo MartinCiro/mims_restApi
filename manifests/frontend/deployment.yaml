@@ -29,7 +29,7 @@ spec:
         effect: "NoSchedule"
       containers:
       - name: frontend
-        image: frontend:latest
+        image: angular_front_store-angular-app:latest
         imagePullPolicy: IfNotPresent
         command:
         - sh

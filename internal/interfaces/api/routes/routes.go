@@ -57,6 +57,17 @@ func SetupRouter(app *app.App, cfg *config.Config) http.Handler {
 
 // setupAllRoutes configura todas las rutas (públicas y protegidas)
 func setupAllRoutes(mux *http.ServeMux, app *app.App) {
+
+	// ========== RUTAS ACME para Let's Encrypt ==========
+	// Este handler debe responder ANTES que cualquier otra ruta
+	mux.HandleFunc("GET /.well-known/acme-challenge/", func(w http.ResponseWriter, r *http.Request) {
+		// Let's Encrypt validation endpoint
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(""))
+		log.Printf("ACME challenge request: %s", r.URL.Path)
+	})
+
+	
 	// Inicializar middlewares
 	authMiddleware := middlewares.NewAuthMiddleware(app.JWTService)
 	refreshMiddleware := middlewares.NewRefreshMiddleware(app.AuthService)

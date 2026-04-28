@@ -24,8 +24,8 @@ spec:
         effect: "NoSchedule"
       containers:
       - name: go-api
-        image: go-api:latest
-        imagePullPolicy: IfNotPresent
+        image: docker.io/library/go-api:latest 
+        imagePullPolicy: Never
         ports:
         - containerPort: 4000
         env:

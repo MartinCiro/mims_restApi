@@ -45,7 +45,7 @@ func main() {
 
 	// Configurar servidor HTTP
 	server := &http.Server{
-		Addr:         ":" + cfg.Port,
+		Addr:         "0.0.0.0:" + cfg.Port,
 		Handler:      routes.SetupRouter(application, cfg),
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,

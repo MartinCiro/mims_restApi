@@ -228,7 +228,7 @@ kubectl delete pod -l app=swag,instance=1
 ### Recrear, desplegar y ver logs
 
 ```bash
-make build; docker save go-api:latest -o go-api.tar; sudo ctr -n k8s.io images import go-api.tar; rm go-api.tar; make deploy; kubectl rollout restart deployment/go-api-deployment-1; sleep 24; kubectl logs -f  $(kubectl get pod -l app=go-api -o custom-columns=NAME:.metadata.name --no-headers)
+make build; docker save go-api:latest -o go-api.tar; sudo ctr --address /run/k3s/containerd/containerd.sock -n k8s.io images import go-api.tar; rm go-api.tar; make deploy; kubectl rollout restart deployment/go-api-deployment-1; sleep 24; kubectl logs -f  $(kubectl get pod -l app=go-api -o custom-columns=NAME:.metadata.name --no-headers)
 
 # Simple:
 docker buildx build -t go-api:latest --load .

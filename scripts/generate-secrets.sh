@@ -28,7 +28,7 @@ get_secure_value() {
     elif [ -n "${!fallback_var}" ]; then
         value="${!fallback_var}"
     else
-        value=$(openssl rand -base64 "$default_length" | head -c "$default_length")
+        value=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | head -c "$default_length")
     fi
     
     # Eliminar todos los caracteres whitespace (espacios, tabs, nuevas líneas)
@@ -54,7 +54,7 @@ get_secure_value_with_hash() {
         value="${!fallback_var}"
     else
         echo "   ⚠️  Neither $primary_var nor $fallback_var set, generating random value" >&2
-        value=$(openssl rand -base64 "$default_length" | head -c "$default_length")
+        value=$(dd if=/dev/urandom bs=32 count=1 2>/dev/null | base64 | head -c "$default_length")
     fi
     
     # Limpiar espacios, tabs y nuevas líneas
