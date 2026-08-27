@@ -1,3 +1,4 @@
+// internal/infrastructure/repositories/usuario_repository.go
 package repositories
 
 import (
@@ -58,8 +59,8 @@ func (r *UsuarioRepository) FindByEmailOrUsername(ctx context.Context, field, va
 	}, nil
 }
 
-// FindByUsername busca usuario por email
-func (r *UsuarioRepository) FindByUsername(ctx context.Context, email string) (*auth.User, error) {
+// FindByEmail busca usuario por email
+func (r *UsuarioRepository) FindByEmail(ctx context.Context, email string) (*auth.User, error) {
 	var usuario models.Usuario
 
 	err := r.dbManager.GetDB().WithContext(ctx).

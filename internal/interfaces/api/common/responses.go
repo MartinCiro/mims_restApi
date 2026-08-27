@@ -1,3 +1,4 @@
+// internal/interfaces/api/common/responses.go
 package common
 
 import (

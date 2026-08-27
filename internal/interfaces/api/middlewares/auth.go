@@ -1,19 +1,14 @@
+// internal/interfaces/api/middlewares/auth.go
 package middlewares
 
 import (
 	"context"
 	"net/http"
-	"sync"
 
 	"api_go/internal/core/auth"
 	"api_go/internal/infrastructure/cookies"
 	"api_go/internal/infrastructure/jwt"
 	"api_go/internal/interfaces/api/common"
-)
-
-// Caché en memoria para almacenar información de usuarios autenticados
-var (
-	userCache = &sync.Map{} // Map thread-safe para concurrencia
 )
 
 type AuthMiddleware struct {
@@ -86,16 +81,6 @@ func (am *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
-}
-
-// GetUserInfo obtiene información del usuario desde la caché
-func GetUserInfo(idUser string) (interface{}, bool) {
-	return userCache.Load(idUser)
-}
-
-// CleanUserCache limpia la caché de un usuario específico
-func CleanUserCache(idUser string) {
-	userCache.Delete(idUser)
 }
 
 func (am *AuthMiddleware) RequireAuthAndPermission(permsMiddleware *PermissionsMiddleware, requiredPermissions []string) func(http.Handler) http.Handler {

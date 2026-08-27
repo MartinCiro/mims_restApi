@@ -1,3 +1,4 @@
+// internal/infrastructure/database/models/tables.go
 package models
 
 import (

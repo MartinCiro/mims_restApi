@@ -1,3 +1,4 @@
+// internal/interfaces/api/handlers/usuarios/handler.go
 package usuarios
 
 import (
@@ -8,7 +9,6 @@ import (
 	coreUsuarios "api_go/internal/core/usuarios"
 	"api_go/internal/interfaces/api/common"
 	usuariosDTOs "api_go/internal/interfaces/api/usuarios"
-	"api_go/pkg/logger"
 	"api_go/pkg/utils"
 )
 
@@ -71,7 +71,6 @@ func (h *UsuariosHandler) ActualizarUsuario(w http.ResponseWriter, r *http.Reque
 	// Decodificar el request body
 	var req usuariosDTOs.UpdateUsuarioRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		logger.Info("Estructura recibida %d", json.NewDecoder(r.Body))
 		common.WriteSimpleError(w, "Solicitud inválida: formato JSON incorrecto", 400)
 		return
 	}

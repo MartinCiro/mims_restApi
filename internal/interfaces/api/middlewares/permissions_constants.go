@@ -1,3 +1,4 @@
+// internal/interfaces/api/middlewares/permissions_constants.go
 package middlewares
 
 // Permisos para Estados

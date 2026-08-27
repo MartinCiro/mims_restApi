@@ -1,3 +1,4 @@
+// internal/core/usuarios/ports.go
 package usuarios
 
 import "context"

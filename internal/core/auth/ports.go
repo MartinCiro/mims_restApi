@@ -1,3 +1,4 @@
+// internal/core/auth/ports.go
 package auth
 
 import (

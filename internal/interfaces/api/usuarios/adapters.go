@@ -1,3 +1,4 @@
+// internal/interfaces/api/usuarios/adapters.go
 package usuarios
 
 import "api_go/internal/core/usuarios"

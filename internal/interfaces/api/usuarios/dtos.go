@@ -1,3 +1,4 @@
+// internal/interfaces/api/usuarios/dtos.go
 package usuarios
 
 import (

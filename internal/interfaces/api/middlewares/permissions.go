@@ -1,3 +1,4 @@
+// internal/interfaces/api/middlewares/permissions.go
 package middlewares
 
 import (

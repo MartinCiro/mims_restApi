@@ -1,3 +1,4 @@
+// internal/infrastructure/cookies/cookie_signer.go
 package cookies
 
 import (

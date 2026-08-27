@@ -1,3 +1,4 @@
+// internal/core/auth/entities.go
 package auth
 
 import (

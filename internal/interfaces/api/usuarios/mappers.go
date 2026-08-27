@@ -1,4 +1,4 @@
-package adapters
+package usuarios
 
 import (
 	"api_go/internal/core/usuarios"
@@ -50,37 +50,12 @@ func (a *UsuariosAdapter) toUsuarioEntityConRelaciones(usuarioDB *models.Usuario
 }
 
 func (a *UsuariosAdapter) obtenerNombreRolDesdeRelacion(usuarioDB *models.Usuario) string {
-	// Usar la relación cargada con Preload
-	if usuarioDB.Rol.NombreRol != "" {
-		return usuarioDB.Rol.NombreRol
-	}
-
-	// Fallback por ID
-	switch usuarioDB.IDRol {
-	case 1:
-		return "admin"
-	case 2:
-		return "usuario"
-	default:
-		return "desconocido"
-	}
+	// ✅ Si el Preload funcionó, úsalo. Si no, devuelve vacío (el Core o la BD deben garantizar la integridad).
+	return usuarioDB.Rol.NombreRol
 }
 
 func (a *UsuariosAdapter) obtenerNombreEstadoDesdeRelacion(usuarioDB *models.Usuario) string {
-	// Usar la relación cargada con Preload
-	if usuarioDB.Estado.NombreEstado != "" {
-		return usuarioDB.Estado.NombreEstado
-	}
-
-	// Fallback por ID
-	switch usuarioDB.EstadoID {
-	case 1:
-		return "activo"
-	case 2:
-		return "inactivo"
-	default:
-		return "desconocido"
-	}
+	return usuarioDB.Estado.NombreEstado
 }
 
 // ObtenerUsuarios implementa el puerto UsuariosPort
@@ -129,7 +104,8 @@ func (a *UsuariosAdapter) ObtenerUsuarios(ctx context.Context) ([]usuarios.Usuar
 // ObtenerUsuarioXid implementa el puerto UsuariosPort
 func (a *UsuariosAdapter) ObtenerUsuarioXid(ctx context.Context, usuarioData usuarios.UsuarioDataXid) (*usuarios.Usuario, error) {
 	documento := fmt.Sprintf("%s", usuarioData.Documento)
-	logger.Warn("Este es doc %d", usuarioData.Documento)
+	logger.Warn("Consultando usuario con documento", "documento", usuarioData.Documento)
+
 	cacheKey := fmt.Sprintf("usuars:%s", usuarioData.Documento)
 
 	// Intentar obtener del cache
@@ -412,7 +388,7 @@ func (a *UsuariosAdapter) actualizarCacheUsuario(ctx context.Context, userID str
 }
 
 func (a *UsuariosAdapter) actualizarCacheLista(ctx context.Context, userID string, usuarioEntity *usuarios.Usuario) {
-	cachedUsuarios, err := a.redisService.Get(ctx, "usuarios:lista")
+	cachedUsuarios, err := a.redisService.Get(ctx, "usuarios:leer")
 	if err == nil && cachedUsuarios != "" {
 		var usuariosCache []usuarios.Usuario
 		if err := json.Unmarshal([]byte(cachedUsuarios), &usuariosCache); err == nil {
@@ -424,7 +400,7 @@ func (a *UsuariosAdapter) actualizarCacheLista(ctx context.Context, userID strin
 				}
 			}
 			updatedJSON, _ := json.Marshal(usuariosCache)
-			a.redisService.Set(ctx, "usuarios:lista", string(updatedJSON), 1800)
+			a.redisService.Set(ctx, "usuarios:leer", string(updatedJSON), 1800)
 		}
 	}
 }
@@ -435,7 +411,7 @@ func (a *UsuariosAdapter) handleQueryError(err error, operation string) error {
 
 func (a *UsuariosAdapter) handleDeleteError(err error, id string) error {
 	errStr := err.Error()
-	logger.Error("Este es el id %d", id)
+	logger.Error("Error eliminando usuario", "id", id)
 
 	if strings.Contains(errStr, "foreign") || strings.Contains(errStr, "constraint") {
 		return fmt.Errorf("No se puede eliminar el usuario porque tiene registros asociados")

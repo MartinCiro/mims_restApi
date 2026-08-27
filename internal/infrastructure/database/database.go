@@ -1,3 +1,4 @@
+// internal/infrastructure/database/database.go
 package database
 
 import (

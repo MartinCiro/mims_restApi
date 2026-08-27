@@ -1,3 +1,4 @@
+// internal/core/usuarios/entities.go
 package usuarios
 
 import (
@@ -22,11 +23,11 @@ type Usuario struct {
 
 // UsuarioData contiene los datos para crear un nuevo usuario
 type UsuarioData struct {
-	Documento       string     `json:"documento" binding:"required"`
-	Nombres         string     `json:"nombres" binding:"required"`
-	Apellido        string     `json:"apellido" binding:"required"`
+	Documento       string     `json:"documento"`
+	Nombres         string     `json:"nombres"`
+	Apellido        string     `json:"apellido"`
 	Email           string     `json:"email" binding:"required,email"`
-	Username        string     `json:"username" binding:"required"`
+	Username        string     `json:"username"`
 	Password        string     `json:"password" binding:"required,min=6"`
 	RolID           *int       `json:"rol_id,omitempty"`
 	EstadoID        *int       `json:"estado_id,omitempty"`
@@ -37,12 +38,12 @@ type UsuarioData struct {
 
 // UsuarioDataXid contiene el ID para buscar o eliminar un usuario
 type UsuarioDataXid struct {
-	Documento string `json:"documento" binding:"required"`
+	Documento string `json:"documento"`
 }
 
 // UsuarioDataUpdate contiene los datos para actualizar un usuario
 type UsuarioDataUpdate struct {
-	Documento       string     `json:"documento" binding:"required"`
+	Documento       string     `json:"documento"`
 	Username        *string    `json:"username,omitempty"`
 	Email           *string    `json:"email,omitempty"`
 	Nombres         *string    `json:"nombres,omitempty"`

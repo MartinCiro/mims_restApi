@@ -433,7 +433,7 @@ user, err := s.authPort.RetrieveUser(ctx, auth.AuthData{
 // internal/infrastructure/repositories/usuario_repository.go
 package repositories
 
-func (r *UsuarioRepository) FindByUsername(ctx context.Context, email string) (*auth.User, error) {
+func (r *UsuarioRepository) FindByEmail(ctx context.Context, email string) (*auth.User, error) {
     ...
     err := r.dbManager.FindUnique(ctx, "usuario", &usuarioDB, map[string]interface{}{
         "email": email,

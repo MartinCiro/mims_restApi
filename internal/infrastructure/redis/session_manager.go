@@ -1,3 +1,4 @@
+// internal/infrastructure/redis/session_manager.go
 package redis
 
 import (

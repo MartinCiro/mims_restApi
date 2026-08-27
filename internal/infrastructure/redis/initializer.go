@@ -1,3 +1,4 @@
+// internal/infrastructure/redis/initializer.go
 package redis
 
 import (
